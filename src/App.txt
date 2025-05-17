@@ -1,0 +1,148 @@
+import React, { useState, useEffect } from 'react'
+import './App.css'
+
+const MOODLE_URL = 'https://vj.sied.utn.edu.ar/lib/ajax/service.php'
+
+async function getCourses(sessionKey: string): Promise<any> {
+  const response = await fetch(`${MOODLE_URL}?sesskey=${sessionKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify([
+      {
+        index: 0,
+        methodname: 'core_course_get_enrolled_courses_by_timeline_classification',
+        args: {
+          offset: 0,
+          limit: 0,
+          classification: 'all',
+          sort: 'fullname',
+          customfieldname: '',
+          customfieldvalue: '',
+        },
+      },
+    ]),
+  })
+  if (!response.ok) throw new Error('Failed to fetch courses')
+  const data = await response.json()
+  return data
+}
+
+const injectSesskeyScript = () => {
+  const script = document.createElement('script')
+  script.textContent = `
+    try {
+      var value = (window.M && window.M.cfg && window.M.cfg.sesskey) ? window.M.cfg.sesskey : null;
+      window.dispatchEvent(new CustomEvent('variableValueRetrieved', { detail: value }));
+    } catch (e) {
+      window.dispatchEvent(new CustomEvent('variableValueRetrieved', { detail: null }));
+    }
+  `
+  document.documentElement.appendChild(script)
+  script.remove()
+}
+
+const App: React.FC = () => {
+  const [sessionKey, setSessionKey] = useState('')
+  const [jsonOutput, setJsonOutput] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Listen for the custom event
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent
+      if (customEvent.detail){
+        setSessionKey(customEvent.detail)
+        console.log('Session Key:', customEvent.detail)
+      }
+      else {
+        console.error('Session Key not found')
+      }
+
+    }
+    window.addEventListener('variableValueRetrieved', handler)
+    injectSesskeyScript()
+    return () => window.removeEventListener('variableValueRetrieved', handler)
+  }, [])
+
+  const handleFetch = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await getCourses(sessionKey)
+      console.log('Courses:', data)
+      setJsonOutput(data)
+    } catch (err: any) {
+      setError(err.message)
+      setJsonOutput(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className='App'>
+      <header className='App-header'>
+                <p>algo {jsonOutput && JSON.stringify(jsonOutput, null, 2)}</p>
+        {jsonOutput && (
+          <pre
+            style={{
+              background: '#222',
+              color: '#0f0',
+              padding: 16,
+              marginTop: 16,
+              borderRadius: 8,
+              maxWidth: 600,
+              overflowX: 'auto',
+              textAlign: 'left',
+            }}
+          >
+            {JSON.stringify(jsonOutput, null, 2)}
+          </pre>
+        )}
+        <img
+          src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/1280px-React-icon.svg.png'
+          className='App-logo'
+          alt='logo'
+        />
+        <p>Hello Vite + React!</p>
+        <input
+          type='text'
+          placeholder='Enter sessionKey'
+          value={sessionKey}
+          onChange={e => setSessionKey(e.target.value)}
+          style={{ marginBottom: 8, padding: 4 }}
+        />
+        <button onClick={handleFetch} disabled={loading || !sessionKey}>
+          {loading ? 'Loading...' : 'Fetch Courses'}
+        </button>
+        {error && <div style={{ color: 'red', marginTop: 8 }}>{error}</div>}
+        {jsonOutput && (
+          <div style={{ marginTop: 16 }}>
+            <h3>Courses:</h3>
+            <pre>{JSON.stringify(jsonOutput, null, 2)}</pre>
+          </div>
+        )}
+      </header>
+        <p>algo {jsonOutput && JSON.stringify(jsonOutput, null, 2)}</p>
+        {jsonOutput && (
+          <pre
+            style={{
+              background: '#222',
+              color: '#0f0',
+              padding: 16,
+              marginTop: 16,
+              borderRadius: 8,
+              maxWidth: 600,
+              overflowX: 'auto',
+              textAlign: 'left',
+            }}
+          >
+            {JSON.stringify(jsonOutput, null, 2)}
+          </pre>
+        )}
+    </div>
+  )
+}
+
+export default App
