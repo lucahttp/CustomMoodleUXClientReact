@@ -39,6 +39,24 @@ async function getCourses(sessionKey: string): Promise<any> {
     return data as CourseResponse[]; // Assert the type of the response
 }
 
+// Add a function to fetch a single course's details
+async function getCourse(sessionKey: string, courseId: number): Promise<any> {
+    const response = await fetch(`${MOODLE_URL}?sesskey=${sessionKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([
+            {
+                index: 0,
+                methodname: 'core_courseformat_get_state',
+                args: { courseid: courseId },
+            },
+        ]),
+    });
+    if (!response.ok) throw new Error('Failed to fetch course');
+    const data = await response.json();
+    return data; // The response is an array as in your example
+}
+
 const injectSesskeyScript = () => {
     const script = document.createElement('script');
     script.textContent = `
@@ -86,6 +104,10 @@ const App: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // New state for course view
+    const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
+    const [courseLoading, setCourseLoading] = useState(false);
+
     useEffect(() => {
         // Listen for the custom event dispatched by the injected script
 
@@ -124,6 +146,7 @@ const App: React.FC = () => {
     const handleFetchCourses = async () => {
         setLoading(true);
         setError(null);
+        setSelectedCourse(null); // Reset course view if coming back
         try {
             const result = await getCourses(sessionKey);
             if (result && result[0]?.data) {
@@ -138,6 +161,29 @@ const App: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    // Handler for clicking a course
+    const handleCourseClick = async (courseId: number) => {
+        setCourseLoading(true);
+        setError(null);
+        try {
+            const result = await getCourse(sessionKey, courseId);
+            if (result && !result[0]?.error) {
+                setSelectedCourse(result[0].data);
+            } else {
+                setError("Failed to load course details.");
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setCourseLoading(false);
+        }
+    };
+
+    // Handler to go back to courses list
+    const handleBackToCourses = () => {
+        setSelectedCourse(null);
     };
 
     return (
@@ -181,10 +227,6 @@ const App: React.FC = () => {
                     </div>
                 </header>
 
-                {(courses && courses.courses.length > 0) && <p className="text-gray-500 dark:text-gray-400">
-                    {"course.shortname"}</p>}
-
-
 
 
 
@@ -219,68 +261,141 @@ const App: React.FC = () => {
                         )}
                     </AnimatePresence>
 
-                    {loading && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {/* Show Skeleton loading cards */}
-                            {[...Array(3)].map((_, i) => (
-                                <div key={i} className="card bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl shadow-md">
-                                    <div className="card-body">
-                                        <div className="skeleton h-8 w-3/4 mb-4 rounded-md"></div>
-                                        <div className="skeleton h-4 w-full mb-2 rounded-md"></div>
-                                        <div className="skeleton h-4 w-full mb-2 rounded-md"></div>
-                                        <div className="skeleton h-4 w-1/2 rounded-md"></div>
+                    {/* Course details view */}
+                    {selectedCourse ? (
+                        <div>
+                            <button
+                                className="btn btn-secondary mb-4"
+                                onClick={handleBackToCourses}
+                                disabled={courseLoading}
+                            >
+                                ← Back to Courses
+                            </button>
+                            {courseLoading ? (
+                                <div>Loading course...</div>
+                            ) : (
+                                <div>
+                                    <h2 className="text-2xl font-bold mb-2">
+                                        {selectedCourse.course?.id}: {selectedCourse.course?.baseurl}
+                                    </h2>
+                                    <div className="mb-4">
+                                        <strong>Sections:</strong>
+                                        <ul className="list-disc ml-6">
+                                            {selectedCourse.section?.map((section: any) => (
+                                                <li key={section.id}>
+                                                    <strong>{section.title}</strong> ({section.sectionurl})
+                                                    {section.cmlist && section.cmlist.length > 0 && (
+                                                        <ul className="list-square ml-4">
+                                                            {section.cmlist.map((cmid: string) => {
+                                                                const cm = selectedCourse.cm?.find((c: any) => c.id === cmid);
+                                                                return cm ? (
+                                                                    <li key={cm.id}>
+                                                                        {cm.name} [{cm.module}]
+                                                                        {cm.url && (
+                                                                            <a
+                                                                                href={cm.url}
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                className="ml-2 text-blue-500 underline"
+                                                                            >
+                                                                                Abrir
+                                                                            </a>
+                                                                        )}
+                                                                    </li>
+                                                                ) : null;
+                                                            })}
+                                                        </ul>
+                                                    )}
+                                                </li>
+                                            ))}
+                                        </ul>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {!loading && courses && courses.courses.length === 0 && (
-                        <div className="text-center text-gray-500 dark:text-gray-400 py-12 rounded-xl">
-                            No courses found.
-                        </div>
-                    )}
-
-                    {!loading && courses && courses.courses.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <AnimatePresence>
-                                {courses.courses.map((course: any) => (
-                                    <motion.div
-                                        key={course.id}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -20 }}
-                                        transition={{ duration: 0.3 }}
+                                    <pre
+                                        style={{
+                                            background: '#222',
+                                            color: '#0f0',
+                                            padding: 16,
+                                            marginTop: 16,
+                                            borderRadius: 8,
+                                            maxWidth: 600,
+                                            overflowX: 'auto',
+                                            textAlign: 'left',
+                                        }}
                                     >
-                                        <div className="card bg-base-100 shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-[1.01] rounded-xl">
+                                        {JSON.stringify(selectedCourse, null, 2)}
+                                    </pre>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <>
+                            {loading && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {/* Show Skeleton loading cards */}
+                                    {[...Array(3)].map((_, i) => (
+                                        <div key={i} className="card bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl shadow-md">
                                             <div className="card-body">
-                                                {course.courseimage && (
-                                                    <div className="mb-4">
-                                                        <img
-                                                            src={course.courseimage}
-                                                            alt={course.fullname}
-                                                            className="rounded-md max-w-[200px] h-[100px] object-cover"
-                                                        />
-                                                    </div>
-                                                )}
-                                                <h2 className="text-xl font-semibold text-gray-900 dark:text-white card-title">
-                                                    {course.fullname}
-                                                </h2>
-                                                <p className="text-gray-500 dark:text-gray-400">
-                                                    {course.shortname}
-                                                </p>
-                                                <p className="text-gray-700 dark:text-gray-300 mb-4">
-                                                    {course.summary}
-                                                </p>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                    Enrolled Users: {course.enrolledusercount}
-                                                </p>
+                                                <div className="skeleton h-8 w-3/4 mb-4 rounded-md"></div>
+                                                <div className="skeleton h-4 w-full mb-2 rounded-md"></div>
+                                                <div className="skeleton h-4 w-full mb-2 rounded-md"></div>
+                                                <div className="skeleton h-4 w-1/2 rounded-md"></div>
                                             </div>
                                         </div>
-                                    </motion.div>
-                                ))}
-                            </AnimatePresence>
-                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {!loading && courses && courses.courses.length === 0 && (
+                                <div className="text-center text-gray-500 dark:text-gray-400 py-12 rounded-xl">
+                                    No courses found.
+                                </div>
+                            )}
+
+                            {!loading && courses && courses.courses.length > 0 && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    <AnimatePresence>
+                                        {courses.courses.map((course: any) => (
+                                            <motion.div
+                                                key={course.id}
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -20 }}
+                                                transition={{ duration: 0.3 }}
+                                            >
+                                                <div
+                                                    className="card bg-base-100 shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-[1.01] rounded-xl cursor-pointer"
+                                                    onClick={() => handleCourseClick(course.id)}
+                                                >
+                                                    <div className="card-body">
+                                                        {course.courseimage && (
+                                                            <div className="mb-4">
+                                                                <img
+                                                                    src={course.courseimage}
+                                                                    alt={course.fullname}
+                                                                    className="rounded-md max-w-[200px] h-[100px] object-cover"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white card-title">
+                                                            {course.fullname}
+                                                        </h2>
+                                                        <p className="text-gray-500 dark:text-gray-400">
+                                                            {course.shortname}
+                                                        </p>
+                                                        <p className="text-gray-700 dark:text-gray-300 mb-4">
+                                                            {course.summary}
+                                                        </p>
+                                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                            Enrolled Users: {course.enrolledusercount}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </AnimatePresence>
+                                </div>
+                            )}
+                        </>
                     )}
                 </main>
 
