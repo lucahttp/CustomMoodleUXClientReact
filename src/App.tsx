@@ -2,6 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 
+// Extend the Window interface to include 'M'
+declare global {
+    interface Window {
+        M?: {
+            cfg?: {
+                sesskey?: string;
+            };
+        };
+    }
+}
+
 const MOODLE_URL = 'https://vj.sied.utn.edu.ar/lib/ajax/service.php';
 
 async function getCourses(sessionKey: string): Promise<any> {
@@ -77,24 +88,36 @@ const App: React.FC = () => {
 
     useEffect(() => {
         // Listen for the custom event dispatched by the injected script
+
+
+        console.log('Listening for session key...');
+        //console.log('Session Key:', window.M.cfg.sesskey);
+
+
         const handleSessionKey = (event: Event) => {
+            console.log('Session Key event triggered');
+            console.log(event);
             const customEvent = event as CustomEvent;
             if (customEvent.detail) {
                 setSessionKey(customEvent.detail);
                 console.log('Session Key:', customEvent.detail);
+                handleFetchCourses();
             } else {
                 console.error('Session Key not found');
                 setError('Session key not found. Please ensure you are logged in to Moodle.');
             }
         };
 
-        window.addEventListener('variableValueRetrieved', handleSessionKey);
+        window.addEventListener('variableValueRetrieved2', handleSessionKey);
 
         // Inject the script to retrieve the session key
-        injectSesskeyScript();
+        //injectSesskeyScript();
+        //triggerSessionKeyEvent();
+        // Cleanup the event listener on component unmount
+        window.dispatchEvent(new CustomEvent('getSessionKey', { detail: null }));
 
         return () => {
-            window.removeEventListener('variableValueRetrieved', handleSessionKey);
+            window.removeEventListener('variableValueRetrieved2', handleSessionKey);
         };
     }, []);
 
@@ -120,10 +143,20 @@ const App: React.FC = () => {
     return (
         <div className="App">
             <div className="min-h-screen bg-base-200 p-4">
+
+
+
                 <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-lg rounded-xl py-4">
                     <div className="container mx-auto px-4 flex items-center justify-between">
+
+                            <img
+                                className="h-12 w-12 mr-4"
+                                alt="Tailwind CSS Navbar component"
+                                src={chrome.runtime.getURL("/assets/imgs/utn_logo.svg")} />
+
+
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                            UTN
+                            UTN T.U.V
                         </h1>
                         {/* Session Key Input (for testing) */}
                         <div className="flex items-center gap-4">
@@ -226,7 +259,7 @@ const App: React.FC = () => {
                                                         <img
                                                             src={course.courseimage}
                                                             alt={course.fullname}
-                                                            className="rounded-md w-full h-auto object-cover"
+                                                            className="rounded-md max-w-[200px] h-[100px] object-cover"
                                                         />
                                                     </div>
                                                 )}
@@ -252,7 +285,7 @@ const App: React.FC = () => {
                 </main>
 
 
-                                {courses && (
+                {courses && (
                     <pre
                         style={{
                             background: '#222',

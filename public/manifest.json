@@ -13,7 +13,12 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["/react/index.js", "/react/vendor.js", "/react/index.css"],
+      "resources": ["/react/index.js",
+      "/react/vendor.js",
+      "/react/index.css",
+      "/assets/js/inject-sesskey.js",
+      "/assets/imgs/utn_logo.svg"
+    ],
       "matches": ["<all_urls>"]
     }
   ]
