@@ -73,6 +73,31 @@ async function getCourse(sessionKey: string, courseId: number): Promise<any> {
   }
 }
 
+
+async function getBookContent(bookId: string) {
+  //book_content
+//https://vj.sied.utn.edu.ar/mod/book/view.php?id=1805&chapterid=580
+// https://vj.sied.utn.edu.ar/mod/book/tool/print/index.php?id=1805
+// https://vj.sied.utn.edu.ar/mod/book/view.php?id=1805&chapterid=578
+
+  const MOODLE_SITE_URL = "https://vj.sied.utn.edu.ar";
+
+  const response = await fetch(
+    `${MOODLE_SITE_URL}?/mod/book/view.php?id=${bookId}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify([
+        {
+          index: 0,
+          methodname: "mod_book_get_book_contents",
+          args: { bookid: bookId },
+        },
+      ]),
+    }
+  );
+}
+
 const injectSesskeyScript = () => {
   const script = document.createElement("script");
   script.textContent = `
