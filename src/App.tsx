@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import "./App.css";
 
 // Extend the Window interface to include 'M'
-declare global {
+/* declare global {
   interface Window {
     M?: {
       cfg?: {
@@ -11,12 +11,12 @@ declare global {
       };
     };
   }
-}
+} */
 
-const MOODLE_URL = "https://vj.sied.utn.edu.ar/lib/ajax/service.php";
+//const MOODLE_URL = "https://vj.sied.utn.edu.ar/lib/ajax/service.php";
 
-async function getCourses(sessionKey: string): Promise<any> {
-  const response = await fetch(`${MOODLE_URL}?sesskey=${sessionKey}`, {
+async function getCourses(moodleEndpoint: string,sessionKey: string): Promise<any> {
+  const response = await fetch(`${moodleEndpoint}?sesskey=${sessionKey}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify([
@@ -41,8 +41,8 @@ async function getCourses(sessionKey: string): Promise<any> {
 }
 
 // Add a function to fetch a single course's details
-async function getCourse(sessionKey: string, courseId: number): Promise<any> {
-  const response = await fetch(`${MOODLE_URL}?sesskey=${sessionKey}`, {
+async function getCourse(moodleEndpoint: string,sessionKey: string, courseId: number): Promise<any> {
+  const response = await fetch(`${moodleEndpoint}?sesskey=${sessionKey}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify([
@@ -74,16 +74,16 @@ async function getCourse(sessionKey: string, courseId: number): Promise<any> {
 }
 
 
-async function getBookContent(bookId: string) {
+async function getBookContent(moodleEndpoint: string,bookId: string) {
   //book_content
 //https://vj.sied.utn.edu.ar/mod/book/view.php?id=1805&chapterid=580
 // https://vj.sied.utn.edu.ar/mod/book/tool/print/index.php?id=1805
 // https://vj.sied.utn.edu.ar/mod/book/view.php?id=1805&chapterid=578
 
-  const MOODLE_SITE_URL = "https://vj.sied.utn.edu.ar";
+  //const MOODLE_SITE_URL = "https://vj.sied.utn.edu.ar";
 
   const response = await fetch(
-    `${MOODLE_SITE_URL}?/mod/book/view.php?id=${bookId}`,
+    `${moodleEndpoint}/mod/book/view.php?id=${bookId}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -194,6 +194,8 @@ interface CourseResponse {
 
 const App: React.FC = () => {
   const [sessionKey, setSessionKey] = useState("");
+  const [moodleEndpoint, setMoodleEndpoint] = useState("");
+
   const [courses, setCourses] = useState<CourseResponse | null>(null); // Update the state type
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -212,9 +214,21 @@ const App: React.FC = () => {
       console.log("Session Key event triggered");
       console.log(event);
       const customEvent = event as CustomEvent;
-      if (customEvent.detail) {
-        setSessionKey(customEvent.detail);
-        console.log("Session Key:", customEvent.detail);
+      if (customEvent.detail.sesskey) {
+        setSessionKey(customEvent.detail.sesskey);
+        console.log("Session Key:", customEvent.detail.sesskey);
+        handleFetchCourses();
+      } else {
+        console.error("Session Key not found");
+        setError(
+          "Session key not found. Please ensure you are logged in to Moodle."
+        );
+      }
+
+
+      if (customEvent.detail.wwwroot) {
+        setMoodleEndpoint(customEvent.detail.wwwroot);
+        console.log("Session Key:", customEvent.detail.wwwroot);
         handleFetchCourses();
       } else {
         console.error("Session Key not found");
@@ -230,7 +244,7 @@ const App: React.FC = () => {
     //injectSesskeyScript();
     //triggerSessionKeyEvent();
     // Cleanup the event listener on component unmount
-    window.dispatchEvent(new CustomEvent("getSessionKey", { detail: null }));
+    window.dispatchEvent(new CustomEvent("getSessionObject", { detail: null }));
 
     return () => {
       window.removeEventListener("variableValueRetrieved2", handleSessionKey);
@@ -242,7 +256,7 @@ const App: React.FC = () => {
     setError(null);
     setSelectedCourse(null); // Reset course view if coming back
     try {
-      const result = await getCourses(sessionKey);
+      const result = await getCourses(`${moodleEndpoint}/lib/ajax/service.php`,sessionKey);
       if (result && result[0]?.data) {
         setCourses(result[0].data as CourseResponse);
       } else {
@@ -264,7 +278,7 @@ const App: React.FC = () => {
     setCourseLoading(true);
     setError(null);
     try {
-      const result = await getCourse(sessionKey, courseId);
+      const result = await getCourse(`${moodleEndpoint}/lib/ajax/service.php`,sessionKey, courseId);
       if (result) {
         setSelectedCourse(result);
       } else {
@@ -494,10 +508,6 @@ const App: React.FC = () => {
                   </AnimatePresence>
                 </div>
               )}
-            </>
-          )}
-        </main>
-
         {courses && (
           <pre
             style={{
@@ -514,6 +524,10 @@ const App: React.FC = () => {
             {JSON.stringify(courses, null, 2)}
           </pre>
         )}
+            </>
+          )}
+        </main>
+
       </div>
     </div>
   );

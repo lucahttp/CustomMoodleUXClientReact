@@ -20,7 +20,7 @@
 // This script injects a button into the page that, when clicked, will remove all existing content from the body and inject a new React component.
 (() => {
   // Create a button to trigger the injection
-  var sessionKey = "";
+  var sessionObject = {};
   const injectButton = document.createElement("button");
   injectButton.textContent = "Inject Code";
   injectButton.style.position = "fixed";
@@ -31,7 +31,7 @@
 
   const codeToInject = async () => {
     document.body.innerHTML = ""; // Remove all existing body content
-    console.log("Injecting ReactJS code... and the sessionKey is: ", sessionKey);
+    console.log("Injecting ReactJS code... and the sessionKey is: ", sessionObject.sesskey);
     const app = document.createElement("div");
     app.id = "root";
     document.body.append(app);
@@ -78,14 +78,14 @@
 
 
       // Escuchamos cuando se reciba la sesión
-    window.addEventListener("getSessionKey", function () {
-      console.log("getSessionKey event received");
+    window.addEventListener("getSessionObject", function () {
+      console.log("getSessionObject event received");
       const event = new CustomEvent("variableValueRetrieved2", {
-        detail: sessionKey,
+        detail: sessionObject,
       }); 
       window.dispatchEvent(event);
-      console.log("Event dispatched with sessionKey:", sessionKey);
-      //return sessionKey;
+      console.log("Event dispatched with sessionObject:", sessionObject);
+      //return getSessionObject;
     });
 
 
@@ -96,9 +96,9 @@
 
     // Escuchamos cuando se reciba la sesión
     window.addEventListener("variableValueRetrieved", function (e) {
-      sessionKey = e.detail;
+      sessionObject = e.detail;
       //const sessionKey = e.detail;
-      console.log("sesskey:", sessionKey);
+      console.log("sessionObject:", sessionObject);
 
       //GetCourse(sessionKey, 22); // Cambia el 1 por el ID del curso que quieras obtener
       //GetCourses(sessionKey);
