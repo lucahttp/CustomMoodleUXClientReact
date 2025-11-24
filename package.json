@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -19,12 +19,8 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.7",
-    "@types/chrome": "^0.0.176",
-    "@types/react": "^19.1.4",
-    "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^1.0.7",
     "daisyui": "^5.0.35",
-    "typescript": "^5.8.3",
     "vite": "^5.2.0"
   }
 }

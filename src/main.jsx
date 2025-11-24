@@ -5,7 +5,7 @@ import App from './App'
 import Frame from 'react-frame-component'
 
 const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
+  document.getElementById('root')
 );
 
 root.render(

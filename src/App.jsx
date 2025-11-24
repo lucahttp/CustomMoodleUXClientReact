@@ -2,36 +2,12 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import "./App.css";
 
-// Extend the Window interface to include 'M' and parsedBookData
-declare global {
-  interface Window {
-    M?: {
-      cfg?: {
-        sesskey?: string;
-      };
-    };
-    parsedBookData?: any;
-  }
-}
-
-// Define types for book parsing
-interface BookChapter {
-  id: string;
-  title: string;
-  content: string;
-}
-
-interface ParsedBook {
-  bookTitle: string;
-  chapters: BookChapter[];
-}
-
 //const MOODLE_URL = "https://vj.sied.utn.edu.ar/lib/ajax/service.php";
 
 async function getCourses(
-  moodleEndpoint: string,
-  sessionKey: string
-): Promise<any> {
+  moodleEndpoint,
+  sessionKey
+) {
   console.log("Fetching courses from function");
   console.log(`Endpoint: ${moodleEndpoint}, Sesskey: ${sessionKey}`);
   const response = await fetch(`${moodleEndpoint}?sesskey=${sessionKey}`, {
@@ -55,15 +31,15 @@ async function getCourses(
   });
   if (!response.ok) throw new Error("Failed to fetch courses");
   const data = await response.json();
-  return data as CourseResponse[]; // Assert the type of the response
+  return data;
 }
 
 // Add a function to fetch a single course's details
 async function getCourse(
-  moodleEndpoint: string,
-  sessionKey: string,
-  courseId: number
-): Promise<any> {
+  moodleEndpoint,
+  sessionKey,
+  courseId
+) {
   const response = await fetch(`${moodleEndpoint}?sesskey=${sessionKey}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -79,7 +55,7 @@ async function getCourse(
   const data = await response.json();
 
   if (data && !data[0]?.error) {
-    const httpResponse: HttpResponse = JSON.parse(data[0].data);
+    const httpResponse = JSON.parse(data[0].data);
     console.log(httpResponse);
 
     // Example of accessing data:
@@ -95,7 +71,7 @@ async function getCourse(
   }
 }
 
-async function getBookContent(moodleEndpoint: string, bookId: string) {
+async function getBookContent(moodleEndpoint, bookId) {
   //book_content
   //https://vj.sied.utn.edu.ar/mod/book/view.php?id=1805&chapterid=580
   // https://vj.sied.utn.edu.ar/mod/book/tool/print/index.php?id=1805
@@ -138,11 +114,11 @@ async function getBookContent(moodleEndpoint: string, bookId: string) {
    * @param {string} htmlString The full HTML content.
    * @returns {ParsedBook} An object containing the book title and chapters.
    */
-  const parseBookContentConsole = (htmlString: string): ParsedBook => {
+  const parseBookContentConsole = (htmlString) => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlString, "text/html");
 
-    const chapters: BookChapter[] = [];
+    const chapters = [];
     let bookTitle = "Untitled Book";
 
     // --- BOOK TITLE EXTRACTION ---
@@ -261,7 +237,7 @@ async function getBookContent(moodleEndpoint: string, bookId: string) {
    * Renders the structured book data to the current page's body with a modern, clean aesthetic.
    * @param {ParsedBook} data - The object containing bookTitle and chapters.
    */
-  const renderParsedBookToBody = (data: ParsedBook) => {
+  const renderParsedBookToBody = (data) => {
     // 1. Clear the current body content
     document.body.innerHTML = "";
 
@@ -403,7 +379,7 @@ async function getBookContent(moodleEndpoint: string, bookId: string) {
     bookContainer.appendChild(subtitle);
 
     // 5. Loop through and add each chapter
-    data.chapters.forEach((chapter: BookChapter) => {
+    data.chapters.forEach((chapter) => {
       const chapterDiv = document.createElement("div");
       chapterDiv.id = `ch-${chapter.id}`;
 
@@ -481,96 +457,17 @@ const injectSesskeyScript = () => {
   script.remove();
 };
 
-interface HttpResponse {
-  course: Course;
-  section: Section[];
-  cm: Cm[];
-}
 
-// Define the type for a single course object
-interface Courses {
-  id: number;
-  fullname: string;
-  shortname: string;
-  idnumber: string;
-  summary: string;
-  summaryformat: number;
-  startdate: number;
-  enddate: number;
-  visible: boolean;
-  showactivitydates: boolean;
-  showcompletionconditions: boolean;
-  fullnamedisplay: string;
-  viewurl: string;
-  courseimage?: string; // The '?' makes it optional
-  progress?: number;
-  hasprogress?: boolean;
-  isfavourite?: boolean;
-  hidden?: boolean;
-  showshortname?: boolean;
-  coursecategory?: string;
-}
-
-interface Course {
-  id: string;
-  numsections: number;
-  sectionlist: string[];
-  editmode: boolean;
-  highlighted: string;
-  maxsections: string;
-  baseurl: string;
-  statekey: string;
-}
-
-interface Section {
-  id: string;
-  section: number;
-  number: number;
-  title: string;
-  hassummary: boolean;
-  rawtitle: string;
-  cmlist: string[];
-  visible: boolean;
-  sectionurl: string;
-  current: boolean;
-  indexcollapsed: boolean;
-  contentcollapsed: boolean;
-  hasrestrictions: boolean;
-}
-
-interface Cm {
-  id: string;
-  anchor: string;
-  name: string;
-  visible: boolean;
-  stealth: boolean;
-  sectionid: string;
-  sectionnumber: number;
-  uservisible: boolean;
-  hascmrestrictions: boolean;
-  module: string;
-  plugin: string;
-  indent: number;
-  accessvisible: boolean;
-  url: string;
-  istrackeduser: boolean;
-  completionstate?: number | string; // completionstate can be a number or a string
-}
-// Define the type for the API response, which contains an array of courses
-interface CourseResponse {
-  courses: Courses[];
-}
-
-const App: React.FC = () => {
+const App = () => {
   const [sessionKey, setSessionKey] = useState("");
   const [moodleEndpoint, setMoodleEndpoint] = useState("");
 
-  const [courses, setCourses] = useState<CourseResponse | null>(null); // Update the state type
+  const [courses, setCourses] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
 
   // New state for course view
-  const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState(null);
   const [courseLoading, setCourseLoading] = useState(false);
 
   useEffect(() => {
@@ -579,10 +476,10 @@ const App: React.FC = () => {
     console.log("Listening for session key...");
     //console.log('Session Key:', window.M.cfg.sesskey);
 
-    const handleSessionKey = (event: Event) => {
+    const handleSessionKey = (event) => {
       console.log("Session Key event triggered");
       console.log(event);
-      const customEvent = event as CustomEvent;
+      const customEvent = event;
       if (customEvent.detail.sesskey) {
         setSessionKey(customEvent.detail.sesskey);
         console.log("Session Key:", customEvent.detail.sesskey);
@@ -629,14 +526,14 @@ const App: React.FC = () => {
         sessionKey
       );
       if (result && result[0]?.data) {
-        setCourses(result[0].data as CourseResponse);
+        setCourses(result[0].data);
       } else {
         setCourses(null); // Set to empty array to indicate no courses
         setError(
           "No courses found.  Verify that the session key is for a user with courses.courses."
         );
       }
-    } catch (err: any) {
+    } catch (err) {
       setError(err.message);
       setCourses(null);
     } finally {
@@ -645,7 +542,7 @@ const App: React.FC = () => {
   };
 
   // Handler for clicking a course
-  const handleCourseClick = async (courseId: number) => {
+  const handleCourseClick = async (courseId) => {
     setCourseLoading(true);
     setError(null);
     try {
@@ -659,14 +556,14 @@ const App: React.FC = () => {
       } else {
         setError("Failed to load course details.");
       }
-    } catch (err: any) {
+    } catch (err) {
       setError(err.message);
     } finally {
       setCourseLoading(false);
     }
   };
 
-  const handleBookClick = async (bookId: string) => {
+  const handleBookClick = async (bookId) => {
     setCourseLoading(true);
     setError(null);
     try {
@@ -679,7 +576,7 @@ const App: React.FC = () => {
         setError("Failed to load book content.");
       }
         */
-    } catch (err: any) {
+    } catch (err) {
       setError(err.message);
     } finally {
       setCourseLoading(false);
@@ -783,15 +680,15 @@ const App: React.FC = () => {
                   <div className="mb-4">
                     <strong>Sections:</strong>
                     <ul className="list-disc ml-6">
-                      {selectedCourse.section?.map((section: any) => (
+                      {selectedCourse.section?.map((section) => (
                         <li key={section.id}>
                           <strong>{section.title}</strong> ({section.sectionurl}
                           )
                           {section.cmlist && section.cmlist.length > 0 && (
                             <ul className="list-square ml-4">
-                              {section.cmlist.map((cmid: string) => {
+                              {section.cmlist.map((cmid) => {
                                 const cm = selectedCourse.cm?.find(
-                                  (c: any) => c.id === cmid
+                                  (c) => c.id === cmid
                                 );
                                 return cm ? (
                                   <li key={cm.id}>
@@ -869,7 +766,7 @@ const App: React.FC = () => {
               {!loading && courses && courses.courses.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <AnimatePresence>
-                    {courses.courses.map((course: any) => (
+                    {courses.courses.map((course) => (
                       <motion.div
                         key={course.id}
                         initial={{ opacity: 0, y: 20 }}
