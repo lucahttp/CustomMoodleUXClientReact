@@ -36,6 +36,12 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      onwarn(warning, warn) {
+        if (warning.code === 'MODULE_LEVEL_DIRECTIVE') {
+          return;
+        }
+        warn(warning);
+      },
       output: {
         entryFileNames: `react/[name].js`,
         chunkFileNames: `react/[name].js`,
