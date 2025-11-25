@@ -21,6 +21,15 @@ and even read the material
 
 
 
+
+and plus (in argentinian la yapa)
+for the ios phone on safari
+
+<img width="auto" height="500" alt="image" src="https://github.com/user-attachments/assets/75769874-47d3-46d7-b7b7-95958aee3d7a" />
+<img width="auto" height="500" alt="image" src="https://github.com/user-attachments/assets/f8612094-a00f-4e86-a4dc-1141ac375a63" />
+
+
+
 ## Features
 
   
@@ -32,6 +41,8 @@ and even read the material
 -  **Hapiness**: by avoiding using the original moodle UI people have experimented an incrsement in hapiness
 
   
+
+
 
 ## Installation
 
