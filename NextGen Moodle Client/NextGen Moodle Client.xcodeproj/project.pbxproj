@@ -1,0 +1,981 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		818A061D2ED6609100DBCA6A /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 818A061C2ED6609100DBCA6A /* AppDelegate.swift */; };
+		818A061F2ED6609100DBCA6A /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 818A061E2ED6609100DBCA6A /* SceneDelegate.swift */; };
+		818A06222ED6609100DBCA6A /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 818A06202ED6609100DBCA6A /* LaunchScreen.storyboard */; };
+		818A06252ED6609100DBCA6A /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 818A06232ED6609100DBCA6A /* Main.storyboard */; };
+		818A062E2ED6609100DBCA6A /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 818A062D2ED6609100DBCA6A /* AppDelegate.swift */; };
+		818A06312ED6609100DBCA6A /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 818A062F2ED6609100DBCA6A /* Main.storyboard */; };
+		818A06382ED6609100DBCA6A /* NextGen Moodle Client Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 818A06372ED6609100DBCA6A /* NextGen Moodle Client Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		818A06422ED6609100DBCA6A /* NextGen Moodle Client Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 818A06412ED6609100DBCA6A /* NextGen Moodle Client Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		818A06472ED6609100DBCA6A /* Main.html in Resources */ = {isa = PBXBuildFile; fileRef = 818A060C2ED6608F00DBCA6A /* Main.html */; };
+		818A06482ED6609100DBCA6A /* Main.html in Resources */ = {isa = PBXBuildFile; fileRef = 818A060C2ED6608F00DBCA6A /* Main.html */; };
+		818A06492ED6609100DBCA6A /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = 818A060E2ED6608F00DBCA6A /* Icon.png */; };
+		818A064A2ED6609100DBCA6A /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = 818A060E2ED6608F00DBCA6A /* Icon.png */; };
+		818A064B2ED6609100DBCA6A /* Style.css in Resources */ = {isa = PBXBuildFile; fileRef = 818A060F2ED6608F00DBCA6A /* Style.css */; };
+		818A064C2ED6609100DBCA6A /* Style.css in Resources */ = {isa = PBXBuildFile; fileRef = 818A060F2ED6608F00DBCA6A /* Style.css */; };
+		818A064D2ED6609100DBCA6A /* Script.js in Resources */ = {isa = PBXBuildFile; fileRef = 818A06102ED6608F00DBCA6A /* Script.js */; };
+		818A064E2ED6609100DBCA6A /* Script.js in Resources */ = {isa = PBXBuildFile; fileRef = 818A06102ED6608F00DBCA6A /* Script.js */; };
+		818A064F2ED6609100DBCA6A /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 818A06112ED6608F00DBCA6A /* ViewController.swift */; };
+		818A06502ED6609100DBCA6A /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 818A06112ED6608F00DBCA6A /* ViewController.swift */; };
+		818A06512ED6609100DBCA6A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 818A06122ED6609100DBCA6A /* Assets.xcassets */; };
+		818A06522ED6609100DBCA6A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 818A06122ED6609100DBCA6A /* Assets.xcassets */; };
+		818A06532ED6609100DBCA6A /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 818A06142ED6609100DBCA6A /* SafariWebExtensionHandler.swift */; };
+		818A06542ED6609100DBCA6A /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 818A06142ED6609100DBCA6A /* SafariWebExtensionHandler.swift */; };
+		818A066A2ED6609200DBCA6A /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = 818A06662ED6609200DBCA6A /* index.html */; };
+		818A066B2ED6609200DBCA6A /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 818A06672ED6609200DBCA6A /* manifest.json */; };
+		818A066C2ED6609200DBCA6A /* assets in Resources */ = {isa = PBXBuildFile; fileRef = 818A06682ED6609200DBCA6A /* assets */; };
+		818A066D2ED6609200DBCA6A /* react in Resources */ = {isa = PBXBuildFile; fileRef = 818A06692ED6609200DBCA6A /* react */; };
+		818A066E2ED6609200DBCA6A /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = 818A06662ED6609200DBCA6A /* index.html */; };
+		818A066F2ED6609200DBCA6A /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 818A06672ED6609200DBCA6A /* manifest.json */; };
+		818A06702ED6609200DBCA6A /* assets in Resources */ = {isa = PBXBuildFile; fileRef = 818A06682ED6609200DBCA6A /* assets */; };
+		818A06712ED6609200DBCA6A /* react in Resources */ = {isa = PBXBuildFile; fileRef = 818A06692ED6609200DBCA6A /* react */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		818A06392ED6609100DBCA6A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 818A06062ED6608F00DBCA6A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 818A06362ED6609100DBCA6A;
+			remoteInfo = "NextGen Moodle Client Extension (iOS)";
+		};
+		818A06432ED6609100DBCA6A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 818A06062ED6608F00DBCA6A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 818A06402ED6609100DBCA6A;
+			remoteInfo = "NextGen Moodle Client Extension (macOS)";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		818A065A2ED6609100DBCA6A /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				818A06382ED6609100DBCA6A /* NextGen Moodle Client Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		818A06612ED6609100DBCA6A /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				818A06422ED6609100DBCA6A /* NextGen Moodle Client Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		818A060D2ED6608F00DBCA6A /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = Base; path = Base.lproj/Main.html; sourceTree = "<group>"; };
+		818A060E2ED6608F00DBCA6A /* Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon.png; sourceTree = "<group>"; };
+		818A060F2ED6608F00DBCA6A /* Style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = Style.css; sourceTree = "<group>"; };
+		818A06102ED6608F00DBCA6A /* Script.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = Script.js; sourceTree = "<group>"; };
+		818A06112ED6608F00DBCA6A /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		818A06122ED6609100DBCA6A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		818A06142ED6609100DBCA6A /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
+		818A06192ED6609100DBCA6A /* NextGen Moodle Client.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "NextGen Moodle Client.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		818A061C2ED6609100DBCA6A /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		818A061E2ED6609100DBCA6A /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		818A06212ED6609100DBCA6A /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		818A06242ED6609100DBCA6A /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		818A06262ED6609100DBCA6A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		818A062B2ED6609100DBCA6A /* NextGen Moodle Client.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "NextGen Moodle Client.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		818A062D2ED6609100DBCA6A /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		818A06302ED6609100DBCA6A /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		818A06322ED6609100DBCA6A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		818A06372ED6609100DBCA6A /* NextGen Moodle Client Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "NextGen Moodle Client Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		818A063C2ED6609100DBCA6A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		818A06412ED6609100DBCA6A /* NextGen Moodle Client Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "NextGen Moodle Client Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		818A06462ED6609100DBCA6A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		818A06662ED6609200DBCA6A /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = index.html; path = ../../dist/index.html; sourceTree = "<group>"; };
+		818A06672ED6609200DBCA6A /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = manifest.json; path = ../../dist/manifest.json; sourceTree = "<group>"; };
+		818A06682ED6609200DBCA6A /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = assets; path = ../../dist/assets; sourceTree = "<group>"; };
+		818A06692ED6609200DBCA6A /* react */ = {isa = PBXFileReference; lastKnownFileType = folder; name = react; path = ../../dist/react; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		818A06162ED6609100DBCA6A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		818A06282ED6609100DBCA6A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		818A06342ED6609100DBCA6A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		818A063E2ED6609100DBCA6A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		818A06052ED6608F00DBCA6A = {
+			isa = PBXGroup;
+			children = (
+				818A060A2ED6608F00DBCA6A /* Shared (App) */,
+				818A06132ED6609100DBCA6A /* Shared (Extension) */,
+				818A061B2ED6609100DBCA6A /* iOS (App) */,
+				818A062C2ED6609100DBCA6A /* macOS (App) */,
+				818A063B2ED6609100DBCA6A /* iOS (Extension) */,
+				818A06452ED6609100DBCA6A /* macOS (Extension) */,
+				818A061A2ED6609100DBCA6A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		818A060A2ED6608F00DBCA6A /* Shared (App) */ = {
+			isa = PBXGroup;
+			children = (
+				818A06112ED6608F00DBCA6A /* ViewController.swift */,
+				818A06122ED6609100DBCA6A /* Assets.xcassets */,
+				818A060B2ED6608F00DBCA6A /* Resources */,
+			);
+			path = "Shared (App)";
+			sourceTree = "<group>";
+		};
+		818A060B2ED6608F00DBCA6A /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				818A060C2ED6608F00DBCA6A /* Main.html */,
+				818A060E2ED6608F00DBCA6A /* Icon.png */,
+				818A060F2ED6608F00DBCA6A /* Style.css */,
+				818A06102ED6608F00DBCA6A /* Script.js */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		818A06132ED6609100DBCA6A /* Shared (Extension) */ = {
+			isa = PBXGroup;
+			children = (
+				818A06652ED6609200DBCA6A /* Resources */,
+				818A06142ED6609100DBCA6A /* SafariWebExtensionHandler.swift */,
+			);
+			path = "Shared (Extension)";
+			sourceTree = "<group>";
+		};
+		818A061A2ED6609100DBCA6A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				818A06192ED6609100DBCA6A /* NextGen Moodle Client.app */,
+				818A062B2ED6609100DBCA6A /* NextGen Moodle Client.app */,
+				818A06372ED6609100DBCA6A /* NextGen Moodle Client Extension.appex */,
+				818A06412ED6609100DBCA6A /* NextGen Moodle Client Extension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		818A061B2ED6609100DBCA6A /* iOS (App) */ = {
+			isa = PBXGroup;
+			children = (
+				818A061C2ED6609100DBCA6A /* AppDelegate.swift */,
+				818A061E2ED6609100DBCA6A /* SceneDelegate.swift */,
+				818A06202ED6609100DBCA6A /* LaunchScreen.storyboard */,
+				818A06232ED6609100DBCA6A /* Main.storyboard */,
+				818A06262ED6609100DBCA6A /* Info.plist */,
+			);
+			path = "iOS (App)";
+			sourceTree = "<group>";
+		};
+		818A062C2ED6609100DBCA6A /* macOS (App) */ = {
+			isa = PBXGroup;
+			children = (
+				818A062D2ED6609100DBCA6A /* AppDelegate.swift */,
+				818A062F2ED6609100DBCA6A /* Main.storyboard */,
+				818A06322ED6609100DBCA6A /* Info.plist */,
+			);
+			path = "macOS (App)";
+			sourceTree = "<group>";
+		};
+		818A063B2ED6609100DBCA6A /* iOS (Extension) */ = {
+			isa = PBXGroup;
+			children = (
+				818A063C2ED6609100DBCA6A /* Info.plist */,
+			);
+			path = "iOS (Extension)";
+			sourceTree = "<group>";
+		};
+		818A06452ED6609100DBCA6A /* macOS (Extension) */ = {
+			isa = PBXGroup;
+			children = (
+				818A06462ED6609100DBCA6A /* Info.plist */,
+			);
+			path = "macOS (Extension)";
+			sourceTree = "<group>";
+		};
+		818A06652ED6609200DBCA6A /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				818A06662ED6609200DBCA6A /* index.html */,
+				818A06672ED6609200DBCA6A /* manifest.json */,
+				818A06682ED6609200DBCA6A /* assets */,
+				818A06692ED6609200DBCA6A /* react */,
+			);
+			name = Resources;
+			path = "Shared (Extension)";
+			sourceTree = SOURCE_ROOT;
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		818A06182ED6609100DBCA6A /* NextGen Moodle Client (iOS) */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 818A065B2ED6609100DBCA6A /* Build configuration list for PBXNativeTarget "NextGen Moodle Client (iOS)" */;
+			buildPhases = (
+				818A06152ED6609100DBCA6A /* Sources */,
+				818A06162ED6609100DBCA6A /* Frameworks */,
+				818A06172ED6609100DBCA6A /* Resources */,
+				818A065A2ED6609100DBCA6A /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				818A063A2ED6609100DBCA6A /* PBXTargetDependency */,
+			);
+			name = "NextGen Moodle Client (iOS)";
+			packageProductDependencies = (
+			);
+			productName = "NextGen Moodle Client (iOS)";
+			productReference = 818A06192ED6609100DBCA6A /* NextGen Moodle Client.app */;
+			productType = "com.apple.product-type.application";
+		};
+		818A062A2ED6609100DBCA6A /* NextGen Moodle Client (macOS) */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 818A06622ED6609100DBCA6A /* Build configuration list for PBXNativeTarget "NextGen Moodle Client (macOS)" */;
+			buildPhases = (
+				818A06272ED6609100DBCA6A /* Sources */,
+				818A06282ED6609100DBCA6A /* Frameworks */,
+				818A06292ED6609100DBCA6A /* Resources */,
+				818A06612ED6609100DBCA6A /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				818A06442ED6609100DBCA6A /* PBXTargetDependency */,
+			);
+			name = "NextGen Moodle Client (macOS)";
+			packageProductDependencies = (
+			);
+			productName = "NextGen Moodle Client (macOS)";
+			productReference = 818A062B2ED6609100DBCA6A /* NextGen Moodle Client.app */;
+			productType = "com.apple.product-type.application";
+		};
+		818A06362ED6609100DBCA6A /* NextGen Moodle Client Extension (iOS) */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 818A06572ED6609100DBCA6A /* Build configuration list for PBXNativeTarget "NextGen Moodle Client Extension (iOS)" */;
+			buildPhases = (
+				818A06332ED6609100DBCA6A /* Sources */,
+				818A06342ED6609100DBCA6A /* Frameworks */,
+				818A06352ED6609100DBCA6A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "NextGen Moodle Client Extension (iOS)";
+			packageProductDependencies = (
+			);
+			productName = "NextGen Moodle Client Extension (iOS)";
+			productReference = 818A06372ED6609100DBCA6A /* NextGen Moodle Client Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		818A06402ED6609100DBCA6A /* NextGen Moodle Client Extension (macOS) */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 818A065E2ED6609100DBCA6A /* Build configuration list for PBXNativeTarget "NextGen Moodle Client Extension (macOS)" */;
+			buildPhases = (
+				818A063D2ED6609100DBCA6A /* Sources */,
+				818A063E2ED6609100DBCA6A /* Frameworks */,
+				818A063F2ED6609100DBCA6A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "NextGen Moodle Client Extension (macOS)";
+			packageProductDependencies = (
+			);
+			productName = "NextGen Moodle Client Extension (macOS)";
+			productReference = 818A06412ED6609100DBCA6A /* NextGen Moodle Client Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		818A06062ED6608F00DBCA6A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					818A06182ED6609100DBCA6A = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
+					818A062A2ED6609100DBCA6A = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
+					818A06362ED6609100DBCA6A = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
+					818A06402ED6609100DBCA6A = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
+				};
+			};
+			buildConfigurationList = 818A06092ED6608F00DBCA6A /* Build configuration list for PBXProject "NextGen Moodle Client" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 818A06052ED6608F00DBCA6A;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 818A061A2ED6609100DBCA6A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				818A06182ED6609100DBCA6A /* NextGen Moodle Client (iOS) */,
+				818A062A2ED6609100DBCA6A /* NextGen Moodle Client (macOS) */,
+				818A06362ED6609100DBCA6A /* NextGen Moodle Client Extension (iOS) */,
+				818A06402ED6609100DBCA6A /* NextGen Moodle Client Extension (macOS) */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		818A06172ED6609100DBCA6A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				818A06492ED6609100DBCA6A /* Icon.png in Resources */,
+				818A06222ED6609100DBCA6A /* LaunchScreen.storyboard in Resources */,
+				818A06472ED6609100DBCA6A /* Main.html in Resources */,
+				818A064D2ED6609100DBCA6A /* Script.js in Resources */,
+				818A06512ED6609100DBCA6A /* Assets.xcassets in Resources */,
+				818A06252ED6609100DBCA6A /* Main.storyboard in Resources */,
+				818A064B2ED6609100DBCA6A /* Style.css in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		818A06292ED6609100DBCA6A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				818A064A2ED6609100DBCA6A /* Icon.png in Resources */,
+				818A064C2ED6609100DBCA6A /* Style.css in Resources */,
+				818A06312ED6609100DBCA6A /* Main.storyboard in Resources */,
+				818A064E2ED6609100DBCA6A /* Script.js in Resources */,
+				818A06522ED6609100DBCA6A /* Assets.xcassets in Resources */,
+				818A06482ED6609100DBCA6A /* Main.html in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		818A06352ED6609100DBCA6A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				818A06712ED6609200DBCA6A /* react in Resources */,
+				818A06702ED6609200DBCA6A /* assets in Resources */,
+				818A066F2ED6609200DBCA6A /* manifest.json in Resources */,
+				818A066E2ED6609200DBCA6A /* index.html in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		818A063F2ED6609100DBCA6A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				818A066D2ED6609200DBCA6A /* react in Resources */,
+				818A066C2ED6609200DBCA6A /* assets in Resources */,
+				818A066B2ED6609200DBCA6A /* manifest.json in Resources */,
+				818A066A2ED6609200DBCA6A /* index.html in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		818A06152ED6609100DBCA6A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				818A064F2ED6609100DBCA6A /* ViewController.swift in Sources */,
+				818A061D2ED6609100DBCA6A /* AppDelegate.swift in Sources */,
+				818A061F2ED6609100DBCA6A /* SceneDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		818A06272ED6609100DBCA6A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				818A06502ED6609100DBCA6A /* ViewController.swift in Sources */,
+				818A062E2ED6609100DBCA6A /* AppDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		818A06332ED6609100DBCA6A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				818A06532ED6609100DBCA6A /* SafariWebExtensionHandler.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		818A063D2ED6609100DBCA6A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				818A06542ED6609100DBCA6A /* SafariWebExtensionHandler.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		818A063A2ED6609100DBCA6A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 818A06362ED6609100DBCA6A /* NextGen Moodle Client Extension (iOS) */;
+			targetProxy = 818A06392ED6609100DBCA6A /* PBXContainerItemProxy */;
+		};
+		818A06442ED6609100DBCA6A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 818A06402ED6609100DBCA6A /* NextGen Moodle Client Extension (macOS) */;
+			targetProxy = 818A06432ED6609100DBCA6A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		818A060C2ED6608F00DBCA6A /* Main.html */ = {
+			isa = PBXVariantGroup;
+			children = (
+				818A060D2ED6608F00DBCA6A /* Base */,
+			);
+			name = Main.html;
+			sourceTree = "<group>";
+		};
+		818A06202ED6609100DBCA6A /* LaunchScreen.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				818A06212ED6609100DBCA6A /* Base */,
+			);
+			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+		818A06232ED6609100DBCA6A /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				818A06242ED6609100DBCA6A /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+		818A062F2ED6609100DBCA6A /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				818A06302ED6609100DBCA6A /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		818A06552ED6609100DBCA6A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		818A06562ED6609100DBCA6A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		818A06582ED6609100DBCA6A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "iOS (Extension)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "NextGen Moodle Client Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.NextGen-Moodle-Client.Extension";
+				PRODUCT_NAME = "NextGen Moodle Client Extension";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		818A06592ED6609100DBCA6A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "iOS (Extension)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "NextGen Moodle Client Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.NextGen-Moodle-Client.Extension";
+				PRODUCT_NAME = "NextGen Moodle Client Extension";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		818A065C2ED6609100DBCA6A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "iOS (App)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "NextGen Moodle Client";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.NextGen-Moodle-Client";
+				PRODUCT_NAME = "NextGen Moodle Client";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		818A065D2ED6609100DBCA6A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "iOS (App)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "NextGen Moodle Client";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.NextGen-Moodle-Client";
+				PRODUCT_NAME = "NextGen Moodle Client";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		818A065F2ED6609100DBCA6A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "macOS (Extension)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "NextGen Moodle Client Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.NextGen-Moodle-Client.Extension";
+				PRODUCT_NAME = "NextGen Moodle Client Extension";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		818A06602ED6609100DBCA6A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "macOS (Extension)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "NextGen Moodle Client Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.NextGen-Moodle-Client.Extension";
+				PRODUCT_NAME = "NextGen Moodle Client Extension";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		818A06632ED6609100DBCA6A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "macOS (App)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "NextGen Moodle Client";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.NextGen-Moodle-Client";
+				PRODUCT_NAME = "NextGen Moodle Client";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		818A06642ED6609100DBCA6A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "macOS (App)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "NextGen Moodle Client";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.yourCompany.NextGen-Moodle-Client";
+				PRODUCT_NAME = "NextGen Moodle Client";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		818A06092ED6608F00DBCA6A /* Build configuration list for PBXProject "NextGen Moodle Client" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				818A06552ED6609100DBCA6A /* Debug */,
+				818A06562ED6609100DBCA6A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		818A06572ED6609100DBCA6A /* Build configuration list for PBXNativeTarget "NextGen Moodle Client Extension (iOS)" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				818A06582ED6609100DBCA6A /* Debug */,
+				818A06592ED6609100DBCA6A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		818A065B2ED6609100DBCA6A /* Build configuration list for PBXNativeTarget "NextGen Moodle Client (iOS)" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				818A065C2ED6609100DBCA6A /* Debug */,
+				818A065D2ED6609100DBCA6A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		818A065E2ED6609100DBCA6A /* Build configuration list for PBXNativeTarget "NextGen Moodle Client Extension (macOS)" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				818A065F2ED6609100DBCA6A /* Debug */,
+				818A06602ED6609100DBCA6A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		818A06622ED6609100DBCA6A /* Build configuration list for PBXNativeTarget "NextGen Moodle Client (macOS)" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				818A06632ED6609100DBCA6A /* Debug */,
+				818A06642ED6609100DBCA6A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 818A06062ED6608F00DBCA6A /* Project object */;
+}

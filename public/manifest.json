@@ -3,24 +3,36 @@
   "name": "NextGen Moodle Client",
   "description": "a custom Moodle UX client ReactJS powered by a Chrome Extension",
   "version": "1.0.0",
+  "icons": {
+    "48": "assets/imgs/icon-48.png",
+    "128": "assets/imgs/icon-128.png",
+    "512": "assets/imgs/icon-512.png"
+  },
   "content_scripts": [
     {
-      "matches": ["https://vj.sied.utn.edu.ar/*"],
-      "js": ["/assets/js/initializeUI.js"],
+      "matches": [
+        "https://vj.sied.utn.edu.ar/*"
+      ],
+      "js": [
+        "/assets/js/initializeUI.js"
+      ],
       "run_at": "document_end",
       "all_frames": true
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["/react/index.js",
-      "/react/vendor.js",
-      "/react/index.css",
-      "/assets/js/inject-sesskey.js",
-      "/assets/imgs/utn_logo.svg",
-      "/assets/imgs/utn_logo_small_2.svg"
-    ],
-      "matches": ["https://vj.sied.utn.edu.ar/*"]
+      "resources": [
+        "/react/index.js",
+        "/react/vendor.js",
+        "/react/index.css",
+        "/assets/js/inject-sesskey.js",
+        "/assets/imgs/utn_logo.svg",
+        "/assets/imgs/utn_logo_small_2.svg"
+      ],
+      "matches": [
+        "https://vj.sied.utn.edu.ar/*"
+      ]
     }
   ]
 }
