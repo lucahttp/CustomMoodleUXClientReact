@@ -1,0 +1,61 @@
+.book-reader-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.chapter-block {
+  margin-bottom: 3rem;
+}
+
+/* Responsive video container */
+.responsive-video-container {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  height: 0;
+  overflow: hidden;
+  margin: 2rem 0;
+  background: #000;
+  border-radius: 0.5rem;
+}
+
+.responsive-video-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* Additional styling for book content */
+.book-reader-container img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1.5rem auto;
+  border-radius: 0.5rem;
+}
+
+.book-reader-container p {
+  margin-bottom: 1.2rem;
+  line-height: 1.7;
+}
+
+.book-reader-container ul,
+.book-reader-container ol {
+  padding-left: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.book-reader-container a {
+  color: #10b981;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.book-reader-container a:hover {
+  text-decoration: underline;
+  color: #059669;
+}
