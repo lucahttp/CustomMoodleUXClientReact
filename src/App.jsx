@@ -354,7 +354,7 @@ const ModuleContentBlock = memo(() => (
 
 // --- View Components ---
 
-const DashboardView = memo(({ onNavigate, courses, loading, courseColors }) => (
+const DashboardView = memo(({ onNavigate, courses, loading, courseColors, onCourseClick }) => (
   <div className="flex flex-col gap-12 animate-in fade-in duration-500">
     <header className="flex flex-col md:flex-row gap-6 items-start md:items-center">
       <div className="hidden lg:block">
@@ -401,7 +401,7 @@ const DashboardView = memo(({ onNavigate, courses, loading, courseColors }) => (
                 key={course.id}
                 title={course.fullname}
                 color={courseColors[course.id] || '#F5E1C0'}
-                onClick={() => handleCourseClick(course.id)}
+                onClick={() => onCourseClick(course.id)}
               />
             )) || COURSES_ALL.map((course) => (
               <CourseCard key={course.id} {...course} />
@@ -413,7 +413,7 @@ const DashboardView = memo(({ onNavigate, courses, loading, courseColors }) => (
   </div>
 ));
 
-const ClassView = memo(({ onNavigate, currentCourse, courseLoading }) => {
+const ClassView = memo(({ onNavigate, currentCourse, courseLoading, onBookClick }) => {
   // Helper function to determine resource type based on module name
 
 
@@ -535,6 +535,7 @@ const ClassView = memo(({ onNavigate, currentCourse, courseLoading }) => {
                       color={getResourceColor(sectionIndex + index)}
                       onClick={() => {
                         if (resource.module === 'book') {
+                          onBookClick(resource.id);
                           onNavigate(VIEW_MODULE);
                         } else if (resource.url) {
                           window.open(resource.url, '_blank');
@@ -1253,10 +1254,10 @@ const App = () => {
           {/* --- LEFT COLUMN: Main Content --- */}
           <main className="col-span-1 lg:col-span-8 p-6 lg:p-12 pb-32">
             {currentView === VIEW_DASHBOARD && (
-              <DashboardView onNavigate={setCurrentView} courses={courses} loading={loading} courseColors={courseColors} />
+              <DashboardView onNavigate={setCurrentView} courses={courses} loading={loading} courseColors={courseColors} onCourseClick={handleCourseClick} />
             )}
             {currentView === VIEW_CLASS && (
-              <ClassView onNavigate={setCurrentView} currentCourse={currentCourse} courseLoading={courseLoading} />
+              <ClassView onNavigate={setCurrentView} currentCourse={currentCourse} courseLoading={courseLoading} onBookClick={handleBookClick} />
             )}
             {currentView === VIEW_MODULE && (
               <ModuleView onNavigate={setCurrentView} />
