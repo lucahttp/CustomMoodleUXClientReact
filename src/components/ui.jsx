@@ -33,14 +33,7 @@ export const Logo = memo(({ onClick }) => (
     onClick={onClick}
     className="w-16 h-16 bg-stone-100 rounded-xl flex items-center justify-center shadow-sm border border-stone-200 flex-shrink-0 cursor-pointer hover:bg-stone-200 transition-colors"
   >
-    <svg
-      viewBox="0 0 24 24"
-      className="w-10 h-10 text-stone-800"
-      fill="currentColor"
-    >
-      <path d="M4 4h4v16H4zM10 4h4v6h-4zM10 14h4v6h-4zM16 4h4v16h-4z" />
-      <path d="M4 10h16v4H4z" stroke="white" strokeWidth="1" />
-    </svg>
+    <img src={chrome.runtime.getURL("/assets/imgs/utn_logo_small_2.svg")} alt="UTN Logo" className="w-10 h-10" />
   </div>
 ));
 

@@ -17,7 +17,8 @@
       "/react/vendor.js",
       "/react/index.css",
       "/assets/js/inject-sesskey.js",
-      "/assets/imgs/utn_logo.svg"
+      "/assets/imgs/utn_logo.svg",
+      "/assets/imgs/utn_logo_small_2.svg"
     ],
       "matches": ["https://vj.sied.utn.edu.ar/*"]
     }
