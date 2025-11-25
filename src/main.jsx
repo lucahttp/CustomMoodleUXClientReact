@@ -10,21 +10,6 @@ const root = ReactDOM.createRoot(
 
 root.render(
   <React.StrictMode>
-    {/*
-    <Frame
-      scrolling='yes'
-      head={[
-        <link
-          key='0'
-          type='text/css'
-          rel='stylesheet'
-          href={chrome.runtime.getURL('/react/index.css')}
-        />,
-      ]}
-    >
-      <App />
-    </Frame>
-    */}
     <App />
   </React.StrictMode>
 )

@@ -1,13 +1,623 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  Search,
+  Clock,
+  BookOpen,
+  Menu,
+  X,
+  ChevronRight,
+  LayoutGrid,
+  Monitor,
+  PlayCircle,
+  Briefcase,
+  Box,
+  ArrowLeft,
+  Folder,
+  FileEdit,
+  Headphones,
+  MessagesSquare,
+  Bug,
+  Tag,
+  MonitorPlay,
+} from "lucide-react";
 import "./App.css";
+
+// --- Constants & Configuration ---
+
+const VIEW_DASHBOARD = "dashboard";
+const VIEW_CLASS = "class";
+const VIEW_MODULE = "module";
+
+const COURSES_RECENT = [
+  { id: 1, title: "CCNA 2020 200-125 Video Boot Camp", color: "pink" },
+  { id: 2, title: "Diseño 2D", color: "beige", onClickView: VIEW_CLASS }, // Link to Class View
+];
+
+const COURSES_ALL = [
+  { id: 3, title: "CCNA 2020 200-125 Video Boot Camp", color: "pink" },
+  {
+    id: 4,
+    title: "Powerful Business Writing: How to Write Concisely",
+    color: "beige",
+  },
+  {
+    id: 5,
+    title: "Certified Six Sigma Yellow Belt Training",
+    color: "purple",
+  },
+  { id: 6, title: "How to Design a Room in 10 Easy Steps", color: "green" },
+];
+
+// Data specifically for "Arte 2D" Class View
+const CLASS_RESOURCES_RECENT = [
+  {
+    id: 101,
+    title: "Modulo 1",
+    type: "folder",
+    color: "beige",
+    onClickView: VIEW_MODULE,
+  },
+  { id: 102, title: "Actividad 5", type: "activity", color: "purple" },
+  {
+    id: 103,
+    title: "Clase Virtual 15/07/2025",
+    type: "virtual",
+    color: "pink",
+  },
+];
+
+const CLASS_RESOURCES_ALL = [
+  { id: 201, title: "CCNA 2020 200-125 Video Boot Camp", color: "pink" },
+  { id: 202, title: "Powerful Business Writing", color: "beige" },
+  { id: 203, title: "Certified Six Sigma Yellow Belt", color: "purple" },
+  { id: 204, title: "How to Design a Room", color: "green" },
+];
+
+// Utility for color mapping
+const getColorClasses = (colorType) => {
+  // If it's a hex color (starts with #), return it directly as inline style
+  if (typeof colorType === 'string' && colorType.startsWith('#')) {
+    return colorType; // Will be used as backgroundColor in inline style
+  }
+  
+  const colors = {
+    pink: "bg-[#F2C6C2] text-stone-800",
+    beige: "bg-[#F5E1C0] text-stone-800",
+    purple: "bg-[#D6D6F5] text-stone-800",
+    green: "bg-[#BDEFDB] text-stone-800",
+    default: "bg-gray-100 text-stone-800",
+  };
+  return colors[colorType] || colors.default;
+};
+
+// --- Color Processing Utilities ---
+
+function componentToHex(c) {
+  const hex = c.toString(16);
+  return hex.length === 1 ? "0" + hex : hex;
+}
+
+function rgbToHex(r, g, b) {
+  return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+}
+
+function rgbToHsl(r, g, b) {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h, s, l = (max + min) / 2;
+
+  if (max === min) {
+    h = s = 0; // achromatic
+  } else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+  return [h, s, l];
+}
+
+function hslToRgb(h, s, l) {
+  let r, g, b;
+  if (s === 0) {
+    r = g = b = l; // achromatic
+  } else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1 / 3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1 / 3);
+  }
+  return {
+    r: Math.round(r * 255),
+    g: Math.round(g * 255),
+    b: Math.round(b * 255),
+  };
+}
+
+function makePastel(r, g, b) {
+  let [h, s, l] = rgbToHsl(r, g, b);
+
+  // PASTEL LOGIC: High Lightness (0.80-0.95), Moderate Saturation (0.6+)
+  l = 0.85 + l * 0.1;
+  if (l > 0.95) l = 0.95;
+  if (l < 0.80) l = 0.80;
+
+  if (s < 0.6) s = 0.6;
+
+  return hslToRgb(h, s, l);
+}
+
+/**
+ * Extract average color from image URL and convert to pastel
+ * @param {string} imageUrl - URL of the image
+ * @returns {Promise<string>} - Hex color code
+ */
+async function extractPastelColorFromImage(imageUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        let r = 0, g = 0, b = 0, count = 0;
+        
+        // Iterate over pixels
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] > 0) { // Check alpha
+            r += data[i];
+            g += data[i + 1];
+            b += data[i + 2];
+            count++;
+          }
+        }
+        
+        // Calculate average
+        r = Math.floor(r / count);
+        g = Math.floor(g / count);
+        b = Math.floor(b / count);
+        
+        // Convert to pastel
+        const pastel = makePastel(r, g, b);
+        const pastelHex = rgbToHex(pastel.r, pastel.g, pastel.b);
+        
+        resolve(pastelHex);
+      } catch (e) {
+        console.warn('Could not extract color from image, using fallback:', e);
+        resolve('#F5E1C0'); // Fallback to beige
+      }
+    };
+    
+    img.onerror = () => {
+      console.warn('Image failed to load, using fallback color');
+      resolve('#F5E1C0'); // Fallback to beige
+    };
+    
+    img.src = imageUrl;
+  });
+}
+
+// --- Shared Components ---
+
+const Logo = memo(({ onClick }) => (
+  <div
+    onClick={onClick}
+    className="w-16 h-16 bg-stone-100 rounded-xl flex items-center justify-center shadow-sm border border-stone-200 flex-shrink-0 cursor-pointer hover:bg-stone-200 transition-colors"
+  >
+    <svg
+      viewBox="0 0 24 24"
+      className="w-10 h-10 text-stone-800"
+      fill="currentColor"
+    >
+      <path d="M4 4h4v16H4zM10 4h4v6h-4zM10 14h4v6h-4zM16 4h4v16h-4z" />
+      <path d="M4 10h16v4H4z" stroke="white" strokeWidth="1" />
+    </svg>
+  </div>
+));
+
+const CourseCard = memo(({ title, color, onClick }) => {
+  const isHexColor = typeof color === 'string' && color.startsWith('#');
+  const textColor = isHexColor ? '#2d3748' : ''; // stone-800 equivalent
+  
+  return (
+    <div
+      onClick={onClick}
+      className={`
+        ${!isHexColor ? getColorClasses(color) : ''} 
+        p-8 rounded-[2rem] h-48 flex items-center 
+        transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer
+        shadow-sm/50
+      `}
+      style={isHexColor ? { backgroundColor: color, color: textColor } : {}}
+    >
+      <h3 className="text-xl font-medium leading-snug md:text-lg lg:text-xl">
+        {title}
+      </h3>
+    </div>
+  );
+});
+
+const FilterPill = memo(({ icon: Icon, label, active }) => (
+  <button
+    className={`
+    flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium transition-all
+    ${
+      active
+        ? "bg-stone-900 text-white shadow-md"
+        : "bg-white text-stone-600 border border-stone-200 hover:bg-stone-50 hover:border-stone-300"
+    }
+  `}
+  >
+    {Icon && <Icon size={18} />}
+    {label}
+  </button>
+));
+
+const ResourceRowCard = memo(({ title, color, type, onClick }) => {
+  const getResourceType = (moduleName) => {
+    const moduleMap = {
+      // Activity types - tareas, quizzes, foros
+      assign: 'activity',
+      quiz: 'activity',
+      forum: 'forum',
+      
+      // Virtual meeting types - zoom, bigbluebutton
+      zoomutnba: 'virtualclass',
+      
+      // Folder/Content types - books, files, labels, resources, urls
+      book: 'folder',
+      folder: 'folder',
+      url: 'everythingelse',
+      label: 'folder',
+    };
+    return moduleMap[moduleName?.toLowerCase()] || 'folder';
+  };
+  
+  const resourceType = getResourceType(type);
+  
+  let Icon = Folder;
+  if (resourceType === "activity") Icon = FileEdit;
+  if (resourceType === "virtualclass") Icon = Headphones;
+  if (resourceType === "forum") Icon = MessagesSquare;
+  if (resourceType === "everythingelse") Icon = Bug;
+
+
+
+
+
+
+  return (
+    <div
+      onClick={onClick}
+      className={`
+        ${getColorClasses(color)}
+        p-4 sm:p-6 rounded-2xl flex items-center gap-4 cursor-pointer
+        transition-transform hover:scale-[1.02] active:scale-[0.98]
+      `}
+    >
+      <div className="opacity-50">
+        <Icon size={24} />
+      </div>
+      <span className="font-medium text-stone-800 text-lg">{title}</span>
+    </div>
+  );
+});
+
+const ModuleContentBlock = memo(() => (
+  <div className="bg-[#F3EADD] p-8 rounded-[2rem] text-stone-800 leading-relaxed space-y-6 font-medium text-lg shadow-sm">
+    <p>
+      La importancia del arte en videojuegos. Niveles de arte. Aplicación del
+      arte en videojuegos.
+    </p>
+    <p>
+      Pixelación y vectorización. La importancia de los borradores. Línea.
+      Formas simples. Luces y sombras.
+    </p>
+    <p>
+      Figura humana: Proporciones del cuerpo, línea de acción y ejes de
+      gravedad. Anatomía de animales. La importancia de la silueta.
+    </p>
+    <p>La importancia de las referencias</p>
+  </div>
+));
+
+// --- View Components ---
+
+const DashboardView = memo(({ onNavigate, courses, loading, courseColors }) => (
+  <div className="flex flex-col gap-12 animate-in fade-in duration-500">
+    <header className="flex flex-col md:flex-row gap-6 items-start md:items-center">
+      <div className="hidden lg:block">
+        <Logo onClick={() => onNavigate(VIEW_DASHBOARD)} />
+      </div>
+      <div>
+        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold uppercase tracking-tight text-stone-900 leading-tight max-w-3xl">
+          Tecnicatura Universitaria en Desarrollo y Producción de Videojuegos
+        </h1>
+      </div>
+    </header>
+
+    <section>
+      <h2 className="text-stone-600 text-sm font-semibold uppercase tracking-wider mb-6 ml-1">
+        Ultimos cursos vistos
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {COURSES_RECENT.map((course) => (
+          <CourseCard
+            key={course.id}
+            {...course}
+            onClick={() =>
+              course.onClickView ? onNavigate(course.onClickView) : null
+            }
+          />
+        ))}
+      </div>
+    </section>
+
+    <section>
+      <h2 className="text-stone-600 text-sm font-semibold uppercase tracking-wider mb-6 ml-1">
+        Todos los cursos
+      </h2>
+
+      {!loading && courses && courses.courses.length === 0 ? (
+        <p className="text-stone-500">No hay cursos disponibles.</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {loading ? (
+            <p className="text-stone-500">Cargando cursos...</p>
+          ) : (
+            courses?.courses?.map((course) => (
+              <CourseCard
+                key={course.id}
+                title={course.fullname}
+                color={courseColors[course.id] || '#F5E1C0'}
+                onClick={() => handleCourseClick(course.id)}
+              />
+            )) || COURSES_ALL.map((course) => (
+              <CourseCard key={course.id} {...course} />
+            ))
+          )}
+        </div>
+      )}
+    </section>
+  </div>
+));
+
+const ClassView = memo(({ onNavigate, currentCourse, courseLoading }) => {
+  // Helper function to determine resource type based on module name
+
+
+  // Helper to assign colors in a cycle
+  const getResourceColor = (index) => {
+    const colors = ['beige', 'purple', 'pink', 'green'];
+    return colors[index % colors.length];
+  };
+
+  // Extract all course modules (resources) with section info
+  const allResources = currentCourse?.cm || [];
+  const sections = currentCourse?.section || [];
+  
+  // Filter visible resources (uservisible === true)
+  const visibleResources = allResources.filter(resource => resource.uservisible !== false);
+  const recentResources = visibleResources.slice(0, 6); // First 6 as "recent"
+
+  // Group resources by section
+  const resourcesBySection = sections
+    .filter(section => section.visible && section.cmlist && section.cmlist.length > 0)
+    .map(section => ({
+      ...section,
+      resources: section.cmlist
+        .map(cmId => allResources.find(cm => cm.id === cmId.toString()))
+        .filter(cm => cm && cm.uservisible !== false)
+    }))
+    .filter(section => section.resources.length > 0);
+
+  const courseName = currentCourse?.course?.fullname || 'Arte 2D';
+
+  return (
+    <div className="flex flex-col gap-8 animate-in slide-in-from-right-8 duration-500">
+    <header className="flex items-center gap-6">
+      <div className="hidden lg:block">
+        <Logo onClick={() => onNavigate(VIEW_DASHBOARD)} />
+      </div>
+      <div className="flex flex-col">
+        <button
+          onClick={() => onNavigate(VIEW_DASHBOARD)}
+          className="flex items-center text-stone-400 hover:text-stone-600 text-sm mb-1 transition-colors w-fit"
+        >
+          <ArrowLeft size={16} className="mr-1" /> Volver al inicio
+        </button>
+        <h1 className="text-3xl md:text-4xl font-bold text-stone-900">
+          {courseName}
+        </h1>
+      </div>
+    </header>
+
+    {courseLoading ? (
+      <div className="flex items-center justify-center py-12">
+        <p className="text-stone-500">Cargando recursos del curso...</p>
+      </div>
+    ) : !currentCourse ? (
+      <div className="flex items-center justify-center py-12">
+        <p className="text-stone-500">No se pudo cargar el curso</p>
+      </div>
+    ) : (
+      <>
+        {/* Filter Bar */}
+        <div className="flex flex-wrap gap-3 overflow-x-auto pb-2 no-scrollbar">
+          <FilterPill icon={LayoutGrid} label="All" active />
+          <FilterPill icon={Monitor} label="Clase Virtual" />
+          <FilterPill icon={PlayCircle} label="Material" />
+          <FilterPill icon={Briefcase} label="Tarea" />
+          <FilterPill icon={Box} label="Interior" />
+        </div>
+
+        {/* Recent Resources Grid */}
+        {recentResources.length > 0 && (
+          <section>
+            <h2 className="text-stone-600 text-sm font-semibold uppercase tracking-wider mb-6 ml-1">
+              Últimos recursos vistos de la materia
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {recentResources.map((resource, index) => (
+                <ResourceRowCard
+                  key={resource.id}
+                  title={resource.name}
+                  type={resource.module}
+                  color={getResourceColor(index)}
+                  onClick={() => {
+                    if (resource.module === 'book') {
+                      onNavigate(VIEW_MODULE);
+                    } else if (resource.url) {
+                      window.open(resource.url, '_blank');
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* All Resources Grid - Organized by Sections */}
+        <section className="space-y-8">
+          <h2 className="text-stone-600 text-sm font-semibold uppercase tracking-wider mb-6 ml-1">
+            Todos los recursos de la materia
+          </h2>
+
+          {resourcesBySection.length === 0 ? (
+            <p className="text-stone-500">No hay recursos disponibles</p>
+          ) : (
+            resourcesBySection.map((section, sectionIndex) => (
+              <div key={section.id} className="space-y-4">
+                {/* Section Title */}
+                <h3 className="text-stone-700 text-base font-semibold ml-1 flex items-center gap-2">
+                  <span className="text-stone-400 font-normal text-sm">#{section.number}</span>
+                  {section.title}
+                </h3>
+                
+                {/* Section Resources */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {section.resources.map((resource, index) => (
+                    <ResourceRowCard
+                      key={resource.id}
+                      title={resource.name}
+                      type={resource.module}
+                      color={getResourceColor(sectionIndex + index)}
+                      onClick={() => {
+                        if (resource.module === 'book') {
+                          onNavigate(VIEW_MODULE);
+                        } else if (resource.url) {
+                          window.open(resource.url, '_blank');
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </section>
+      </>
+    )}
+  </div>
+  );
+});
+
+const ModuleView = memo(({ onNavigate }) => (
+  <div className="flex flex-col gap-8 animate-in slide-in-from-right-8 duration-500">
+    <header className="flex items-center gap-6">
+      <div className="hidden lg:block">
+        <Logo onClick={() => onNavigate(VIEW_DASHBOARD)} />
+      </div>
+      <div className="flex flex-col">
+        <button
+          onClick={() => onNavigate(VIEW_CLASS)}
+          className="flex items-center text-stone-400 hover:text-stone-600 text-sm mb-1 transition-colors w-fit"
+        >
+          <ArrowLeft size={16} className="mr-1" /> Volver a Arte 2D
+        </button>
+        <h1 className="text-3xl md:text-4xl font-bold text-stone-900">
+          Modulo 1
+        </h1>
+      </div>
+    </header>
+
+    <section>
+      <h2 className="text-stone-600 text-sm font-semibold uppercase tracking-wider mb-4 ml-1">
+        Indice
+      </h2>
+      <ModuleContentBlock />
+    </section>
+
+    <section>
+      <h2 className="text-stone-600 text-sm font-semibold uppercase tracking-wider mb-4 ml-1">
+        Objetivos
+      </h2>
+
+      {/* Objectives Container */}
+      <div className="bg-[#F3EADD] p-8 rounded-[2rem] space-y-6 min-h-[400px]">
+        <h3 className="text-xl font-medium text-stone-800">
+          Objetivos Generales:
+        </h3>
+
+        {/* Slide Preview Mock */}
+        <div className="w-full aspect-video bg-[#004d66] rounded-xl flex flex-col justify-center px-12 relative overflow-hidden shadow-inner group cursor-pointer">
+          {/* Decorative sidebar on slide */}
+          <div className="absolute left-0 top-0 bottom-0 w-16 bg-[#005f7e] flex flex-col items-center justify-center gap-2 opacity-50">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="w-2 h-2 bg-white/20 rounded-full" />
+            ))}
+          </div>
+          <h1 className="text-4xl md:text-6xl font-bold text-white z-10">
+            Clase 1
+          </h1>
+
+          {/* Hover overlay to simulate interaction */}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+            <MonitorPlay
+              className="text-white opacity-0 group-hover:opacity-100 transform scale-90 group-hover:scale-100 transition-all duration-300 drop-shadow-lg"
+              size={64}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+));
 
 //const MOODLE_URL = "https://vj.sied.utn.edu.ar/lib/ajax/service.php";
 
-async function getCourses(
-  moodleEndpoint,
-  sessionKey
-) {
+async function getCourses(moodleEndpoint, sessionKey) {
   console.log("Fetching courses from function");
   console.log(`Endpoint: ${moodleEndpoint}, Sesskey: ${sessionKey}`);
   const response = await fetch(`${moodleEndpoint}?sesskey=${sessionKey}`, {
@@ -35,11 +645,7 @@ async function getCourses(
 }
 
 // Add a function to fetch a single course's details
-async function getCourse(
-  moodleEndpoint,
-  sessionKey,
-  courseId
-) {
+async function getCourse(moodleEndpoint, sessionKey, courseId) {
   const response = await fetch(`${moodleEndpoint}?sesskey=${sessionKey}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -443,21 +1049,6 @@ async function getBookContent(moodleEndpoint, bookId) {
   })();
 }
 
-const injectSesskeyScript = () => {
-  const script = document.createElement("script");
-  script.textContent = `
-    try {
-      var value = (window.M && window.M.cfg && window.M.cfg.sesskey) ? window.M.cfg.sesskey : null;
-      window.dispatchEvent(new CustomEvent('variableValueRetrieved', { detail: value }));
-    } catch (e) {
-      window.dispatchEvent(new CustomEvent('variableValueRetrieved', { detail: null }));
-    }
-  `;
-  document.documentElement.appendChild(script);
-  script.remove();
-};
-
-
 const App = () => {
   const [sessionKey, setSessionKey] = useState("");
   const [moodleEndpoint, setMoodleEndpoint] = useState("");
@@ -469,6 +1060,38 @@ const App = () => {
   // New state for course view
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [courseLoading, setCourseLoading] = useState(false);
+
+  const [currentView, setCurrentView] = useState(VIEW_DASHBOARD);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Store extracted colors for courses
+  const [courseColors, setCourseColors] = useState({});
+  
+  // Store currently selected course for ClassView
+  const [currentCourse, setCurrentCourse] = useState(null);
+
+  // Dynamic Sidebar Content based on View
+  const getSidebarContent = () => {
+    const isDashboard = currentView === VIEW_DASHBOARD;
+    const searchTitle = isDashboard ? "carrera" : "materia";
+
+    // Mock resources for sidebar
+    const resources = isDashboard
+      ? [
+          { id: 1, title: "Arte 2D - Modulo 2" },
+          { id: 2, title: "Arte 2D - Modulo 1" },
+          { id: 3, title: "Desarrollo 2 - Modulo 2" },
+        ]
+      : [
+          { id: 1, title: "Modulo 1" },
+          { id: 2, title: "Actividad 5" },
+          { id: 3, title: "Clase Virtual 15/07/2025" },
+        ];
+
+    return { searchTitle, resources };
+  };
+
+  const { searchTitle, resources } = getSidebarContent();
 
   useEffect(() => {
     // Listen for the custom event dispatched by the injected script
@@ -527,6 +1150,28 @@ const App = () => {
       );
       if (result && result[0]?.data) {
         setCourses(result[0].data);
+        
+        // Extract colors from course images
+        const colorPromises = result[0].data.courses.map(async (course) => {
+          if (course.courseimage) {
+            try {
+              const color = await extractPastelColorFromImage(course.courseimage);
+              return { id: course.id, color };
+            } catch (e) {
+              console.warn(`Failed to extract color for course ${course.id}:`, e);
+              return { id: course.id, color: '#F5E1C0' }; // Fallback
+            }
+          }
+          return { id: course.id, color: '#F5E1C0' }; // Default beige
+        });
+        
+        const extractedColors = await Promise.all(colorPromises);
+        const colorsMap = extractedColors.reduce((acc, { id, color }) => {
+          acc[id] = color;
+          return acc;
+        }, {});
+        
+        setCourseColors(colorsMap);
       } else {
         setCourses(null); // Set to empty array to indicate no courses
         setError(
@@ -553,6 +1198,8 @@ const App = () => {
       );
       if (result) {
         setSelectedCourse(result);
+        setCurrentCourse(result);
+        setCurrentView(VIEW_CLASS);
       } else {
         setError("Failed to load course details.");
       }
@@ -590,6 +1237,110 @@ const App = () => {
 
   return (
     <div className="App">
+      <div className="min-h-screen bg-[#FEFDF9] font-sans text-stone-900 selection:bg-stone-200 overflow-x-hidden">
+        {/* Mobile Header */}
+        <div className="lg:hidden p-6 flex justify-between items-center sticky top-0 bg-[#FEFDF9]/90 backdrop-blur-md z-50">
+          <Logo onClick={() => setCurrentView(VIEW_DASHBOARD)} />
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"
+          >
+            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
+
+        <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 min-h-screen">
+          {/* --- LEFT COLUMN: Main Content --- */}
+          <main className="col-span-1 lg:col-span-8 p-6 lg:p-12 pb-32">
+            {currentView === VIEW_DASHBOARD && (
+              <DashboardView onNavigate={setCurrentView} courses={courses} loading={loading} courseColors={courseColors} />
+            )}
+            {currentView === VIEW_CLASS && (
+              <ClassView onNavigate={setCurrentView} currentCourse={currentCourse} courseLoading={courseLoading} />
+            )}
+            {currentView === VIEW_MODULE && (
+              <ModuleView onNavigate={setCurrentView} />
+            )}
+          </main>
+
+          {/* --- RIGHT COLUMN: Sidebar --- */}
+          <aside
+            className={`
+          fixed inset-0 z-40 bg-[#F5F0EB] lg:static lg:bg-[#F5F0EB] 
+          lg:col-span-4 lg:block lg:min-h-[95vh] lg:m-4 lg:rounded-[3rem]
+          p-8 lg:p-10 flex flex-col gap-12
+          transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1)
+          ${sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}
+        `}
+          >
+            <div className="lg:hidden flex justify-end mb-4">
+              <button onClick={() => setSidebarOpen(false)}>
+                <X size={28} />
+              </button>
+            </div>
+
+            <div className="space-y-6 mt-4 lg:mt-12">
+              <div className="flex items-start gap-2">
+                <BookOpen className="text-green-700 mt-1" size={24} />
+                <h2 className="text-2xl font-medium text-stone-900 leading-tight">
+                  Busca en todo el <br /> contenido de la {searchTitle}
+                </h2>
+              </div>
+
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search
+                    className="text-stone-400 group-focus-within:text-stone-600 transition-colors"
+                    size={20}
+                  />
+                </div>
+                <input
+                  type="text"
+                  className="
+                  w-full py-4 pl-12 pr-4 
+                  bg-[#FEFDF9] border border-transparent hover:border-stone-200 focus:border-stone-300
+                  rounded-full shadow-sm text-stone-800 placeholder-stone-400
+                  focus:outline-none focus:ring-2 focus:ring-stone-200/50
+                  transition-all
+                "
+                  placeholder="Buscar..."
+                />
+              </div>
+            </div>
+
+            <div className="flex-grow hidden lg:block"></div>
+
+            <div className="mt-auto">
+              <h3 className="text-stone-500 text-xs font-semibold uppercase tracking-wider mb-4">
+                Ultimos recursos vistos
+              </h3>
+              <div className="flex flex-col gap-2">
+                {resources.map((res) => (
+                  <div
+                    key={res.id}
+                    className="bg-[#FDFBF9] p-4 rounded-2xl flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer mb-3"
+                  >
+                    <div className="p-2 bg-transparent rounded-full border border-stone-300 text-stone-800">
+                      <Clock size={20} strokeWidth={2} />
+                    </div>
+                    <span className="text-stone-700 font-medium text-sm md:text-base">
+                      {res.title}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+
+          {/* Mobile Overlay */}
+          {sidebarOpen && (
+            <div
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
+        </div>
+      </div>
       <div className="min-h-screen bg-base-200 p-4">
         <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-lg rounded-xl py-4">
           <div className="container mx-auto px-4 flex items-center justify-between">
@@ -703,7 +1454,8 @@ const App = () => {
                                         >
                                           Abrir
                                         </a>
-                                        <button onClick={() => handleBookClick(cm.id)}
+                                        <button
+                                          onClick={() => handleBookClick(cm.id)}
                                           className="ml-2 text-green-500 underline"
                                         >
                                           Parse Book
@@ -806,22 +1558,6 @@ const App = () => {
                     ))}
                   </AnimatePresence>
                 </div>
-              )}
-              {courses && (
-                <pre
-                  style={{
-                    background: "#222",
-                    color: "#0f0",
-                    padding: 16,
-                    marginTop: 16,
-                    borderRadius: 8,
-                    maxWidth: 600,
-                    overflowX: "auto",
-                    textAlign: "left",
-                  }}
-                >
-                  {JSON.stringify(courses, null, 2)}
-                </pre>
               )}
             </>
           )}
