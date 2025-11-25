@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import * as api from "../api/moodle";
 import { extractPastelColorFromImage } from "../utils/colors";
+import { dbService } from "../db/service";
+import { useObservable } from "./useObservable";
 
 export const useMoodle = () => {
   const [session, setSession] = useState({ key: "", url: "" });
-  const [courses, setCourses] = useState([]);
-  const [courseColors, setCourseColors] = useState({});
+  const courses = useObservable(dbService.observeCourses(), []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -33,16 +34,20 @@ export const useMoodle = () => {
       setLoading(true);
       try {
         const data = await api.fetchCourses(session.url, session.key);
-        setCourses(data.courses);
-        console.log("Fetched Courses:", data.courses);
+        console.log("Fetched Courses from Moodle API", data);
+        // Save to DB
+        dbService.saveCourses(data.courses);
+        console.log("Synced Courses to DB");
         
         // Process Colors in background
+        /*
         data.courses.forEach(async (c) => {
           if (c.courseimage) {
             const color = await extractPastelColorFromImage(c.courseimage);
-            setCourseColors(prev => ({ ...prev, [c.id]: color }));
+            await dbService.updateCourseColor(c.id, color);
           }
         });
+        */
       } catch (err) {
         setError(err.message);
       } finally {
@@ -52,5 +57,5 @@ export const useMoodle = () => {
     loadCourses();
   }, [session]);
 
-  return { session, courses, courseColors, loading, error };
+  return { session, courses, loading, error };
 };

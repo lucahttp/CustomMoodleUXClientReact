@@ -24,7 +24,15 @@ import tailwindcssPlugin from '@tailwindcss/postcss'; // Import the new plugin
 
 export default defineConfig({
   plugins: [
-    react(), tsconfigPaths()
+    react({
+      babel: {
+        plugins: [
+          ['@babel/plugin-proposal-decorators', { legacy: true }],
+          ['@babel/plugin-proposal-class-properties', { loose: true }],
+        ],
+      },
+    }),
+    tsconfigPaths()
   ],
   css: {
     postcss: {

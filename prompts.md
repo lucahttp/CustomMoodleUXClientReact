@@ -1,1 +1,7 @@
 Imagine how to clean and re-implement this Moodle ClassRoom Ui Enhancer Extension "_insert_code_" Use the existing code to solve it in the best way possible. Before responding, think about the best solutions a Senior React Architect would take and improve them by following the easiest and most appropriate options.
+
+
+
+
+
+Imagine how to implement a in-browser DB that in principle, it is WatermelonDB, but in the future it may be RxDB, TinyBase, Realm DB, etc. to store and to cache the Courses, their Resources and the Books of them. I want this to be able to do searchs in all the subjects/classes, for an specific class and for an specific module, also you might have the option to only store in cache the courses and stuff that you have oppened or a button that gets all the courses, all the resources and then all the books. in a future I would like to experiment with the search result by using full text search or vector search by switching to other DB like RxDB that offers this. Use the existing code convined with internet examples to solve it in the best way possible. Before responding, think about the best solutions a Senior React Architect would take and improve them by following the easiest and most appropriate options.
