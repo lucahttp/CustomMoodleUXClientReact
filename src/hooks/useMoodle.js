@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import * as api from "../api/moodle";
 import { extractPastelColorFromImage } from "../utils/colors";
 import { dbService } from "../db/service";
@@ -6,7 +6,8 @@ import { useObservable } from "./useObservable";
 
 export const useMoodle = () => {
   const [session, setSession] = useState({ key: "", url: "" });
-  const courses = useObservable(dbService.observeCourses(), []);
+  const coursesObservable = useMemo(() => dbService.observeCourses(), []);
+  const courses = useObservable(coursesObservable, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -14,9 +15,9 @@ export const useMoodle = () => {
   useEffect(() => {
     const handleSessionKey = (event) => {
       if (event.detail.sesskey) {
-        setSession({ 
-            key: event.detail.sesskey, 
-            url: event.detail.wwwroot || "" 
+        setSession({
+          key: event.detail.sesskey,
+          url: event.detail.wwwroot || ""
         });
       }
     };
@@ -38,7 +39,7 @@ export const useMoodle = () => {
         // Save to DB
         dbService.saveCourses(data.courses);
         console.log("Synced Courses to DB");
-        
+
         // Process Colors in background
         /*
         data.courses.forEach(async (c) => {
