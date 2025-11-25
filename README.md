@@ -11,9 +11,15 @@ It provides a user-friendly interface that includes a button to inject the new r
   
 
 ![button to inject the code](https://i.imgur.com/2DDN7rl.png)
-![the new ui](https://i.imgur.com/Zs6FUVm.png)
 
-  
+Here you can see all your classes
+<img width="2878" height="1744" alt="image" src="https://github.com/user-attachments/assets/3ca7ebc9-c6d7-4e8f-a700-46f93c1fb023" />
+all the material of a class
+<img width="2880" height="1740" alt="image" src="https://github.com/user-attachments/assets/e2da61c7-0a24-4ab8-b74f-02b3fe1eca48" />
+and even read the material
+<img width="2880" height="1730" alt="image" src="https://github.com/user-attachments/assets/3656bf0e-d2b0-4148-8f3f-fc0aaa5326ab" />
+
+
 
 ## Features
 
@@ -60,6 +66,14 @@ npm install
 npm run build
 
 ```
+for Safari IOS/MacOS you need also to run. src: https://developer.apple.com/news/?id=qiz0arxc
+
+```bash
+
+xcrun safari-web-extension-converter ./dist
+
+```
+
 
   
 
