@@ -3,12 +3,17 @@
 
   
 
+
 This project is a Chrome extension designed to facilitate the navigation and experience of students using Moodle at the UTN T.U.V.
 
 It provides a user-friendly interface that includes a button to inject the new react client.
+  
+The extension is available for [Google Chrome](https://chrome.google.com/webstore/detail/mhmmdaloicjopkjdchmbopcfbjfdmjkn/preview?hl=es-419&authuser=0), 
 
-  
-  
+[![](https://img.shields.io/chrome-web-store/v/mhmmdaloicjopkjdchmbopcfbjfdmjkn.svg?logo=google-chrome&style=flat)](https://chrome.google.com/webstore/detail/mhmmdaloicjopkjdchmbopcfbjfdmjkn/preview?hl=es-419&authuser=0) [![](https://img.shields.io/chrome-web-store/rating/mhmmdaloicjopkjdchmbopcfbjfdmjkn.svg?logo=google-chrome&style=flat)](https://chrome.google.com/webstore/detail/mhmmdaloicjopkjdchmbopcfbjfdmjkn/preview?hl=es-419&authuser=0) [![](https://img.shields.io/chrome-web-store/users/mhmmdaloicjopkjdchmbopcfbjfdmjkn.svg?logo=google-chrome&style=flat)](https://chrome.google.com/webstore/detail/mhmmdaloicjopkjdchmbopcfbjfdmjkn/preview?hl=es-419&authuser=0)
+
+
+
 
 ![button to inject the code](https://i.imgur.com/2DDN7rl.png)
 
