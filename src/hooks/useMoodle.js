@@ -41,13 +41,13 @@ export const useMoodle = () => {
         console.log("Synced Courses to DB");
 
         // Process Colors in background
-        /*
         data.courses.forEach(async (c) => {
           if (c.courseimage) {
             const color = await extractPastelColorFromImage(c.courseimage);
             await dbService.updateCourseColor(c.id, color);
           }
         });
+        /*
         */
       } catch (err) {
         setError(err.message);

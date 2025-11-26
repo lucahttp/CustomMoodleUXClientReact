@@ -11,15 +11,14 @@
  * @property {BookChapter[]} chapters - An array of structured chapter objects.
  */
 
-const MOODLE_BASE_URL = "https://vj.sied.utn.edu.ar";
-
 /**
  * Parses chapter and book title content from a provided HTML string.
  * Includes YouTube video cleanup, basic content sanitization, and URL correction.
  * @param {string} htmlString The full HTML content.
  * @returns {ParsedBook} An object containing the book title and chapters.
  */
-export const parseBookContent = (htmlString) => {
+export const parseBookContent = (htmlString, endpoint) => {
+    const MOODLE_BASE_URL = endpoint;
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlString, "text/html");
 

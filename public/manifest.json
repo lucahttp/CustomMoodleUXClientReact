@@ -11,7 +11,8 @@
   "content_scripts": [
     {
       "matches": [
-        "https://vj.sied.utn.edu.ar/*"
+        "https://vj.sied.utn.edu.ar/*",
+        "https://campus.cui.edu.ar/*"
       ],
       "js": [
         "/assets/js/initializeUI.js"
@@ -31,7 +32,8 @@
         "/assets/imgs/utn_logo_small_2.svg"
       ],
       "matches": [
-        "https://vj.sied.utn.edu.ar/*"
+        "https://vj.sied.utn.edu.ar/*",
+        "https://campus.cui.edu.ar/*"
       ]
     }
   ]

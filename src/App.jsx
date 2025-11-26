@@ -28,7 +28,7 @@ const App = () => {
     if (!session.key) return;
     setUiLoading(true);
     try {
-      //await dbService.syncAll(session.url, session.key, fetchCourseDetails);
+      await dbService.syncAll(session.url, session.key, fetchCourseDetails);
       alert("All courses synced successfully!");
     } catch (e) {
       console.error(e);
@@ -64,7 +64,7 @@ const App = () => {
   const handleBookClick = useCallback(async (bookId) => {
     setUiLoading(true);
     try {
-      const html = await fetchBookContentHTML(bookId);
+      const html = await fetchBookContentHTML(session.url, bookId);
       setBookContent(html);
       setCurrentView(VIEWS.BOOK);
     } catch (e) {
@@ -72,7 +72,7 @@ const App = () => {
     } finally {
       setUiLoading(false);
     }
-  }, []);
+  }, [session]);
 
   // 4. Render
   return (
@@ -118,6 +118,7 @@ const App = () => {
           {!uiLoading && currentView === VIEWS.BOOK && bookContent && (
             <BookReader
               htmlContent={bookContent}
+              endpoint={session.url}
               onBack={() => setCurrentView(VIEWS.CLASS)}
             />
           )}

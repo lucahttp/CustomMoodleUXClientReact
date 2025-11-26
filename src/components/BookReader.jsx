@@ -3,14 +3,14 @@ import { MonitorPlay } from 'lucide-react';
 import { parseBookContent } from "../utils/bookParser";
 import "./BookReader.css";
 
-const BookReader = ({ htmlContent, onBack }) => {
+const BookReader = ({ htmlContent, endpoint, onBack }) => {
   console.log("BookReader rendering");
 
   // Parse HTML string into Data Object
   const bookData = useMemo(() => {
     console.log("Parsing book content...");
-    return parseBookContent(htmlContent);
-  }, [htmlContent]);
+    return parseBookContent(htmlContent, endpoint);
+  }, [htmlContent, endpoint]);
 
   useEffect(() => {
     console.log("BookReader mounted");

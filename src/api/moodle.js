@@ -55,9 +55,9 @@ export const fetchCourseDetails = async (endpoint, sessionKey, courseId) => {
 
 
 
-export const fetchBookContentHTML = async (bookId) => {
+export const fetchBookContentHTML = async (endpoint, bookId) => {
   // Fetch the raw HTML string for the book print view
-  const url = `https://vj.sied.utn.edu.ar/mod/book/tool/print/index.php?id=${bookId}`;
+  const url = `${endpoint}/mod/book/tool/print/index.php?id=${bookId}`;
   const response = await fetch(url);
   if (!response.ok) throw new Error("Failed to load book");
   return await response.text();
