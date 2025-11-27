@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - CustomMoodleUXClientReact</title>
+    
+    <script type="module" src="https://unpkg.com/@fluentui/web-components"></script>
+
+    <style>
+        /* Fluent UI Base Styles & Layout */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f3f2f1; /* Fluent Neutral Gray */
+            font-family: 'Segoe UI', 'Segoe UI Web (West European)', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+            color: #201f1e;
+            line-height: 1.6;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        /* The main card wrapper */
+        fluent-card {
+            padding: 40px;
+            width: 100%;
+            max-width: 800px;
+            border-radius: 4px;
+            /* Fluent Shadow Depth 4 */
+            box-shadow: 0 1.6px 3.6px 0 rgba(0,0,0,0.132), 0 0.3px 0.9px 0 rgba(0,0,0,0.108);
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #0078d4; /* Fluent Blue */
+        }
+
+        h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-top: 32px;
+            margin-bottom: 16px;
+        }
+
+        h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 24px;
+            margin-bottom: 8px;
+        }
+
+        p, li {
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .meta-text {
+            color: #605e5c;
+            font-size: 12px;
+            margin-bottom: 24px;
+        }
+
+        /* Utility helper for the placeholders */
+        .placeholder {
+            background-color: #fff4ce;
+            padding: 2px 4px;
+            border-radius: 4px;
+            border: 1px dashed #dba900;
+            font-weight: 500;
+        }
+
+        /* Footer area */
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #edebe9;
+            text-align: center;
+            font-size: 12px;
+            color: #605e5c;
+        }
+    </style>
+</head>
+<body>
+    
+    <fluent-design-system-provider use-defaults background-color="#f3f2f1">
+        <div class="container">
+            <fluent-card>
+                <h1>Privacy Policy</h1>
+                <div class="meta-text">
+                    For <strong>CustomMoodleUXClientReact</strong> | Last Updated: <span class="placeholder">[Insert Date]</span>
+                </div>
+
+                <p>
+                    <strong>CustomMoodleUXClientReact</strong> ("we," "us," or "the Extension") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our Chrome extension to enhance your Moodle experience.
+                </p>
+                <p>
+                    We value your trust and are committed to the following principles:
+                </p>
+                <ul>
+                    <li>We <strong>never</strong> sell your personal data.</li>
+                    <li>We use your data <strong>only</strong> to provide the functionality of the extension.</li>
+                    <li>We do not transfer your data to third parties for marketing or advertising purposes.</li>
+                </ul>
+
+                <h2>1. Information We Collect</h2>
+                <p>To provide a customized user interface for Moodle, the Extension may handle the following types of data:</p>
+
+                <h3>A. Moodle Session Data (Authentication)</h3>
+                <ul>
+                    <li><strong>What we collect:</strong> The Extension accesses your existing Moodle session cookies or authentication tokens.</li>
+                    <li><strong>Why we need it:</strong> This allows the Extension to fetch your course lists, grades, and assignments from your Moodle instance without requiring you to log in again.</li>
+                    <li><strong>Storage:</strong> These tokens are stored locally on your device (using <code>chrome.storage</code>) and are never sent to our own servers. They are only transmitted directly to your official Moodle instance.</li>
+                </ul>
+
+                <h3>B. Course and User Content</h3>
+                <ul>
+                    <li><strong>What we collect:</strong> Course names, assignment details, grades, and other educational content displayed on your Moodle dashboard.</li>
+                    <li><strong>Why we need it:</strong> To render the custom, user-friendly interface that is the core purpose of this Extension.</li>
+                    <li><strong>Storage:</strong> This content may be temporarily cached in your browser's local storage to improve performance.</li>
+                </ul>
+
+                <h3>C. Technical Usage Data</h3>
+                <p>
+                    <span class="placeholder">[Note: If you do not use analytics, replace this text with: "We do not collect any telemetry or usage data."]</span>
+                    <br>
+                    We may collect anonymous technical data (e.g., browser version, error logs) to help us fix bugs. This data is aggregated and cannot be used to identify you personally.
+                </p>
+
+                <fluent-divider></fluent-divider>
+                <h2>2. How We Use Your Information</h2>
+                <p>We use the information we collect strictly for the following purposes:</p>
+                <ul>
+                    <li><strong>Functionality:</strong> To display your Moodle courses and assignments in the custom React interface.</li>
+                    <li><strong>Performance:</strong> To load your dashboard faster by caching frequently accessed data locally.</li>
+                </ul>
+
+                <fluent-divider></fluent-divider>
+                <h2>3. Data Sharing and Disclosure</h2>
+                <p>We <strong>do not</strong> sell, trade, or otherwise transfer your personally identifiable information to outside parties.</p>
+                <ul>
+                    <li><strong>Third-Party Services:</strong> The Extension communicates directly between your browser and your Moodle provider. We do not route your traffic through any intermediate servers.</li>
+                    <li><strong>Legal Requirements:</strong> We may disclose information if required by law, though since we do not host your data on our servers, we typically possess no data to disclose.</li>
+                </ul>
+
+                <fluent-divider></fluent-divider>
+                <h2>4. Permissions and Justification</h2>
+                <p>The Extension requests the following permissions to function:</p>
+                <ul>
+                    <li><strong>storage:</strong> Used to save your user preferences (e.g., theme settings) and cache course data locally on your device.</li>
+                    <li><strong>host_permissions:</strong> Required to send web requests to your Moodle website to fetch your course data.</li>
+                    <li><strong>scripting / activeTab:</strong> Used to inject the custom interface into the Moodle webpage.</li>
+                </ul>
+
+                <fluent-divider></fluent-divider>
+                <h2>5. Data Security</h2>
+                <p>We implement a variety of security measures to maintain the safety of your personal information:</p>
+                <ul>
+                    <li><strong>Local Processing:</strong> All data processing happens directly in your web browser.</li>
+                    <li><strong>Encryption:</strong> All communication between the Extension and your Moodle instance occurs over HTTPS (TLS/SSL), ensuring your session tokens and grades are encrypted in transit.</li>
+                </ul>
+
+                <fluent-divider></fluent-divider>
+                <h2>6. Data Retention</h2>
+                <ul>
+                    <li><strong>Session Data:</strong> Authentication tokens are retained only as long as your Moodle session is active or until you log out.</li>
+                    <li><strong>Local Cache:</strong> You can clear the Extension's stored data at any time by uninstalling the Extension or clearing your browser's "Site Data."</li>
+                </ul>
+
+                <fluent-divider></fluent-divider>
+                <h2>7. Your Rights</h2>
+                <p>You have the right to:</p>
+                <ul>
+                    <li><strong>Access:</strong> See the data the Extension displays (your Moodle content).</li>
+                    <li><strong>Delete:</strong> Remove all data stored by the Extension by simply uninstalling it from Chrome.</li>
+                    <li><strong>Opt-out:</strong> Stop using the Extension at any time.</li>
+                </ul>
+
+                <fluent-divider></fluent-divider>
+                <h2>8. Limited Use Policy</h2>
+                <p>
+                    The use and transfer to any other app of information received from Google APIs will adhere to the 
+                    <fluent-anchor href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank">Google API Services User Data Policy</fluent-anchor>, including the Limited Use requirements.
+                </p>
+
+                <fluent-divider></fluent-divider>
+                <h2>9. Contact Us</h2>
+                <p>If you have any questions about this Privacy Policy, please contact us at:</p>
+                
+                <p>
+                    <strong>Developer:</strong> <span class="placeholder">[Your Name]</span><br>
+                    <strong>Email:</strong> <span class="placeholder">[Your Email Address]</span><br>
+                    <strong>Project URL:</strong> <fluent-anchor href="https://github.com/lucahttp/CustomMoodleUXClientReact" target="_blank">GitHub Repository</fluent-anchor>
+                </p>
+
+                <div class="footer">
+                    &copy; <script>document.write(new Date().getFullYear())</script> CustomMoodleUXClientReact. All rights reserved.
+                </div>
+
+            </fluent-card>
+        </div>
+    </fluent-design-system-provider>
+</body>
+</html>
