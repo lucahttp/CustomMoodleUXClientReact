@@ -1,64 +1,137 @@
 export const MOODLE_SERVICE_URL = "/lib/ajax/service.php";
 
-export const fetchCourses = async (endpoint, sessionKey) => {
+const moodlePost = async (endpoint, sessionKey, calls) => {
   const response = await fetch(`${endpoint}${MOODLE_SERVICE_URL}?sesskey=${sessionKey}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify([{
-      index: 0,
-      methodname: "core_course_get_enrolled_courses_by_timeline_classification",
-      args: { offset: 0, limit: 0, classification: "all", sort: "fullname" },
-    }]),
+    body: JSON.stringify(calls),
   });
-  if (!response.ok) throw new Error("Failed to fetch courses");
-  const data = await response.json();
-  return data[0]?.data; // Return the inner data directly
+  if (!response.ok) throw new Error("Moodle API request failed");
+  return await response.json();
+};
+
+export const fetchCourses = async (endpoint, sessionKey) => {
+  const data = await moodlePost(endpoint, sessionKey, [{
+    index: 0,
+    methodname: "core_course_get_enrolled_courses_by_timeline_classification",
+    args: { offset: 0, limit: 0, classification: "all", sort: "fullname" },
+  }]);
+  return data[0]?.data;
 };
 
 export const fetchCourseDetails = async (endpoint, sessionKey, courseId) => {
-
-  const response = await fetch(`${endpoint}${MOODLE_SERVICE_URL}?sesskey=${sessionKey}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify([
-      {
-        index: 0,
-        methodname: "core_courseformat_get_state",
-        args: { courseid: courseId },
-      },
-    ]),
-  });
-  if (!response.ok) throw new Error("Failed to fetch course");
-  const data = await response.json();
+  const data = await moodlePost(endpoint, sessionKey, [{
+    index: 0,
+    methodname: "core_courseformat_get_state",
+    args: { courseid: courseId },
+  }]);
 
   if (data && !data[0]?.error) {
     const httpResponse = JSON.parse(data[0].data);
-    console.log(httpResponse);
-
-    // Example of accessing data:
-    console.log("Course ID:", httpResponse.course.id);
-    console.log("Number of Sections:", httpResponse.course.numsections);
-    console.log("First Section Title:", httpResponse.section[0].title);
-    console.log("First CM Name:", httpResponse.cm[0].name);
-    console.log("First Section URL", httpResponse.section[0].sectionurl);
-
-    return httpResponse; // The response is an array as in your example
-  } else {
-    console.log("Failed to load course details.");
+    return httpResponse;
   }
-}
-
-
-
-
-
-
-
+  throw new Error("Failed to load course details.");
+};
 
 export const fetchBookContentHTML = async (endpoint, bookId) => {
-  // Fetch the raw HTML string for the book print view
   const url = `${endpoint}/mod/book/tool/print/index.php?id=${bookId}`;
   const response = await fetch(url);
   if (!response.ok) throw new Error("Failed to load book");
   return await response.text();
+};
+
+/** Fetch assignments for a course */
+export const fetchAssignments = async (endpoint, sessionKey, courseId) => {
+  const data = await moodlePost(endpoint, sessionKey, [{
+    index: 0,
+    methodname: "mod_assign_get_assignments",
+    args: { courseids: [courseId] },
+  }]);
+  if (data[0]?.error) throw new Error(data[0].error.message);
+  return data[0]?.data?.courses?.[0]?.assignments ?? [];
+};
+
+/** Fetch assignment submission status and instructions */
+export const fetchAssignmentDetails = async (endpoint, sessionKey, assignId) => {
+  const [statusData, infoData] = await Promise.all([
+    moodlePost(endpoint, sessionKey, [{
+      index: 0,
+      methodname: "mod_assign_get_submission_status",
+      args: { assignid: assignId },
+    }]),
+    moodlePost(endpoint, sessionKey, [{
+      index: 0,
+      methodname: "core_course_get_course_module",
+      args: { cmid: assignId },
+    }]),
+  ]);
+  return {
+    status: statusData[0]?.data ?? null,
+    info: infoData[0]?.data ?? null,
+  };
+};
+
+/** Fetch quiz questions for a quiz cm */
+export const fetchQuizAttempt = async (endpoint, sessionKey, quizId) => {
+  // 1. Start/resume attempt
+  const attemptData = await moodlePost(endpoint, sessionKey, [{
+    index: 0,
+    methodname: "mod_quiz_start_attempt",
+    args: { quizid: quizId, forcenew: false },
+  }]);
+  const attempt = attemptData[0]?.data?.attempt;
+  if (!attempt) throw new Error("Could not retrieve quiz attempt.");
+
+  // 2. Get questions
+  const questionsData = await moodlePost(endpoint, sessionKey, [{
+    index: 0,
+    methodname: "mod_quiz_get_attempt_data",
+    args: { attemptid: attempt.id, page: 0 },
+  }]);
+  return {
+    attempt,
+    questions: questionsData[0]?.data?.questions ?? [],
+  };
+};
+
+/** Submit text answer to an assignment */
+export const submitAssignmentText = async (endpoint, sessionKey, assignId, text) => {
+  const data = await moodlePost(endpoint, sessionKey, [{
+    index: 0,
+    methodname: "mod_assign_save_submission",
+    args: {
+      assignmentid: assignId,
+      plugindata: {
+        onlinetext_editor: {
+          text,
+          format: 1, // HTML
+          itemid: 0,
+        },
+      },
+    },
+  }]);
+  if (data[0]?.error) throw new Error(data[0].error.message);
+  return data[0]?.data;
+};
+
+/** Fetch forum discussions in a course */
+export const fetchForumDiscussions = async (endpoint, sessionKey, courseId) => {
+  const data = await moodlePost(endpoint, sessionKey, [{
+    index: 0,
+    methodname: "mod_forum_get_forums_by_courses",
+    args: { courseids: [courseId] },
+  }]);
+  if (data[0]?.error) throw new Error(data[0].error.message);
+  return data[0]?.data ?? [];
+};
+
+/** Fetch grades for the current user in a course */
+export const fetchGrades = async (endpoint, sessionKey, courseId) => {
+  const data = await moodlePost(endpoint, sessionKey, [{
+    index: 0,
+    methodname: "gradereport_user_get_grade_items",
+    args: { courseid: courseId },
+  }]);
+  if (data[0]?.error) throw new Error(data[0].error.message);
+  return data[0]?.data ?? [];
 };
