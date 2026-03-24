@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { useMoodle } from "./hooks/useMoodle";
+import { useWebMCP } from "./hooks/useWebMCP";
 import DashboardView from "./components/DashboardView";
 import ClassView from "./components/ClassView";
 import BookReader from "./components/BookReader";
@@ -22,6 +23,19 @@ const App = () => {
   const [bookContent, setBookContent] = useState(null);
   const [uiLoading, setUiLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const handleBookClick = useCallback(async (bookId) => {
+    setUiLoading(true);
+    try {
+      const html = await fetchBookContentHTML(session.url, bookId);
+      setBookContent(html);
+      setCurrentView(VIEWS.BOOK);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setUiLoading(false);
+    }
+  }, [session]);
 
   // 3. Handlers
   const handleSyncAll = useCallback(async () => {
@@ -46,7 +60,7 @@ const App = () => {
       // Save to DB for caching
       await dbService.saveFullCourseData(courseId, details);
       // filter courses by courseId and get fullname;
-      var courseName = courses.find((course) => course.id === courseId)?.fullname;
+      const courseName = courses.find((course) => course.id === courseId)?.fullname;
 
       console.log("Course name: " + courseName);
       console.log("All Courses: " + courses);
@@ -61,18 +75,14 @@ const App = () => {
     }
   }, [session, courses]);
 
-  const handleBookClick = useCallback(async (bookId) => {
-    setUiLoading(true);
-    try {
-      const html = await fetchBookContentHTML(session.url, bookId);
-      setBookContent(html);
-      setCurrentView(VIEWS.BOOK);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setUiLoading(false);
-    }
-  }, [session]);
+  // 4. WebMCP Integration
+  useWebMCP({
+    courses,
+    session,
+    handleCourseClick,
+    handleSyncAll,
+    dbService
+  });
 
   // 4. Render
   return (
