@@ -27,12 +27,14 @@ import {
 } from "lucide-react";
 
 import { dbService } from "../db/service";
+import { getPgliteInstance } from "../db/pgliteSync";
+import { makeGlobalSearchQuery } from "../db/queries";
 
 const VIEW_CLASS = "class";
 const VIEW_DASHBOARD = "dashboard";
 
 const DashboardView = memo(
-  ({ session, onNavigate, courses, loading, onCourseClick, onSyncAll }) => {
+  ({ session, onNavigate, courses, loading, onCourseClick, onSyncAll, onResourceClick }) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [searchResults, setSearchResults] = useState({ courses: [], resources: [] });
     const [isSearching, setIsSearching] = useState(false);
@@ -50,9 +52,11 @@ const DashboardView = memo(
     });
 
     const handleCourseSelect = useCallback((courseId) => {
+      console.log(`[Dashboard] 🖱️ handleCourseSelect ID: ${courseId}`);
       // Find course details to save to recents
       const course = courses?.find(c => c.id === courseId) || searchResults.courses.find(c => c.id === courseId);
       if (course) {
+        console.log(`[Dashboard] 🕒 Updating recent courses with: ${course.fullname}`);
         setRecentCourses(prev => {
           const newRecent = [
             { id: course.id, title: course.fullname, color: course.color || "#F5E1C0", onClickView: VIEW_CLASS },
@@ -67,24 +71,58 @@ const DashboardView = memo(
 
     useEffect(() => {
       if (session?.url && session?.key) {
+        console.log(`[Dashboard] 🛰️ Session confirmed. Fetching upcoming tasks...`);
         setLoadingTasks(true);
         fetchUpcomingTasks(session.url, session.key)
-          .then(data => setPendingTasks(data))
-          .catch(err => console.error("Error fetching tasks:", err))
+          .then(data => {
+             console.log(`[Dashboard] 🛰️ Received ${data?.length || 0} tasks.`);
+             setPendingTasks(data);
+          })
+          .catch(err => console.error("[Dashboard] 🔥 Error fetching tasks:", err))
           .finally(() => setLoadingTasks(false));
       }
     }, [session]);
 
     useEffect(() => {
       if (searchTerm.length > 2) {
+        console.log(`[Dashboard] 🔎 Debouncing search for: "${searchTerm}"`);
         setIsSearching(true);
         const timeoutId = setTimeout(() => {
-          dbService.search(searchTerm).then(results => {
-            setSearchResults(results);
-            setIsSearching(false);
-          }).catch(() => {
-            setIsSearching(false);
-          });
+          console.log(`[Dashboard] 🔎 Executing DB search now...`);
+          
+          const runSearch = async () => {
+            try {
+              const db = await getPgliteInstance();
+              const result = await db.query(makeGlobalSearchQuery(), [searchTerm]);
+              
+              // Formatting PGlite FTS output directly to UI expectations
+              const resourcesTokens = result.rows.map(row => ({
+                id: row.resource_id,
+                name: row.resource_title,
+                type: row.source_type === 'video' ? 'zoom' : 'book', // helps icon engine
+                timestamp: row.source_type === 'video' ? row.deep_link_ref : null,
+                anchor: row.source_type === 'book' ? row.deep_link_ref : null,
+                snippet: row.snippet,
+                rank: row.rank
+              }));
+
+              // We'll optionally keep course search from old dbService to not break everything while migrating
+              let coursesOld = [];
+              try {
+                const oldRes = await dbService.search(searchTerm);
+                coursesOld = oldRes.courses || [];
+              } catch(e) {}
+
+              console.log(`[Dashboard] 🔎 Search results received:`, { courses: coursesOld, resources: resourcesTokens });
+              setSearchResults({ courses: coursesOld, resources: resourcesTokens });
+            } catch (e) {
+              console.error(`[Dashboard] 🔥 Search error:`, e);
+            } finally {
+               setIsSearching(false);
+            }
+          };
+          runSearch();
+
         }, 300);
         return () => clearTimeout(timeoutId);
       } else {
@@ -153,20 +191,40 @@ const DashboardView = memo(
                   </div>
                 ))}
                 
-                {searchResults.resources.map(r => (
-                  <div key={r.id} onClick={() => handleCourseSelect(r.course.id)} className="p-5 flex items-start gap-4 bg-white border border-stone-200 rounded-xl cursor-pointer hover:border-violet-400 hover:shadow-md transition-all group">
-                    <div className="p-3 bg-violet-50 text-violet-600 rounded-lg group-hover:bg-violet-100 transition-colors">
-                      <Folder className="w-5 h-5" />
+                {searchResults.resources.map(r => {
+                  return (
+                    <div key={r.id} onClick={() => onResourceClick(r, r.timestamp || r.anchor)} className="p-5 flex items-start gap-4 bg-white border border-stone-200 rounded-xl cursor-pointer hover:border-violet-400 hover:shadow-md transition-all group">
+                      <div className="p-3 bg-violet-50 text-violet-600 rounded-lg group-hover:bg-violet-100 transition-colors shrink-0">
+                        {r.type.includes('zoom') || r.type.includes('clase') ? <MonitorPlay className="w-5 h-5" /> : <Folder className="w-5 h-5" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex justify-between items-start">
+                          <h3 className="font-bold text-stone-900 leading-tight truncate mr-2">{r.name}</h3>
+                          {r.timestamp && (
+                            <span className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 bg-violet-100 text-violet-700 rounded text-[10px] font-bold tabular-nums">
+                              <Clock className="w-3 h-3" />
+                              {Number(r.timestamp).toFixed(1)}s
+                            </span>
+                          )}
+                          {r.anchor && (
+                            <span className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-bold tabular-nums">
+                              <BookOpen className="w-3 h-3" />
+                              ir a sección
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-violet-600 uppercase font-semibold mt-1 tracking-wider">{r.type}</p>
+                        
+                        {r.snippet && (
+                          <div 
+                             className="mt-2 text-xs text-stone-500 italic bg-stone-50 p-2 rounded border border-stone-100 line-clamp-2"
+                             dangerouslySetInnerHTML={{ __html: `...${r.snippet}...` }}
+                          />
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-stone-900 leading-tight">{r.name}</h3>
-                      <p className="text-xs text-stone-500 mt-1 line-clamp-1">
-                        Recurso de <span className="font-medium text-violet-600">{courses.find((course) => course.id === r.course.id)?.fullname || "la materia"}</span>
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                
+                  );
+                })}
                 {searchResults.courses.length === 0 && searchResults.resources.length === 0 && (
                   <div className="col-span-1 md:col-span-2 py-10 text-center text-stone-500 bg-white rounded-xl border border-stone-100">
                     <Search className="w-8 h-8 mx-auto text-stone-300 mb-2" />

@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy:ci-alpine
+    container_name: newmoodledb-caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - CADDY_INGRESS_NETWORKS=newmoodle_network
+    networks:
+      - newmoodle_network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./caddy_data:/data
+      - ./caddy_config:/config
+
+  minio:
+    image: quay.io/minio/minio
+    container_name: newmoodledb-minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password123
+      # Note the change to https and .localhost
+      - MINIO_BROWSER_REDIRECT_URL=https://s3.localhost/minio-console
+    volumes:
+      - ./minio_data:/data
+    networks:
+      - newmoodle_network
+    labels:
+      caddy: "s3.localhost"
+
+      # 1. Redirige para asegurar que la URL termine en barra diagonal (/)
+      caddy.redir: "/minio-console /minio-console/"
+
+      # 2. handle_path corta el prefijo "/minio-console" antes de enviarlo al puerto 9001
+      caddy.handle_path_0: "/minio-console/*"
+      caddy.handle_path_0.reverse_proxy: "newmoodledb-minio:9001"
+
+      # 3. El resto de las peticiones van a la API de S3 (puerto 9000)
+      caddy.handle_path_1: "/*"
+      caddy.handle_path_1.reverse_proxy: "newmoodledb-minio:9000"
+
+networks:
+  newmoodle_network:
+    name: newmoodle_network
+    driver: bridge

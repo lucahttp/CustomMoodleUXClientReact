@@ -8,6 +8,8 @@ import {
   BackToMoodleButton 
 } from "./ui";
 import { processZoomRecording } from "../api/zoomProcessor";
+import { dbService } from "../db/service";
+import { parseZoomDate, agruparClasesPorFecha, formatearFechaClase } from "../utils/dateUtils";
 
 import {
   Search,
@@ -29,36 +31,49 @@ import {
   Bug,
   Tag,
   MonitorPlay,
-  Video
+  Video,
+  Calendar
 } from "lucide-react";
 
 const VIEW_CLASS = "class";
 const VIEW_DASHBOARD = "dashboard";
-const VIEW_MODULE = "module";
+const VIEW_MODULE = "book";
 
 
-const ClassView = memo(({ session, onNavigate, currentCourse, courseLoading, onBookClick }) => {
+const ClassView = memo(({ session, onNavigate, currentCourse, courseLoading, onResourceClick, onVideoClick }) => {
 
   const [activeFilter, setActiveFilter] = useState("All");
   const [zoomStatuses, setZoomStatuses] = useState({});
 
   const handleProcessZoom = async (e, resourceId, resourceName) => {
     e.stopPropagation();
-    if (zoomStatuses[resourceId]?.loading) return;
+    console.log(`[ClassView] 🖱️ Clicked "Procesar" on Zoom ID: ${resourceId} - ${resourceName}`);
+    if (zoomStatuses[resourceId]?.loading) {
+       console.log(`[ClassView] ⏳ Process already loading for ${resourceId}, ignoring click.`);
+       return;
+    }
     
     setZoomStatuses(prev => ({ ...prev, [resourceId]: { loading: true, status: 'Iniciando...' } }));
     
     // Process the video using the API
-    const result = await processZoomRecording(session.url, resourceId, currentCourse?.shortname || currentCourse?.fullname, resourceName, (status) => {
+    console.log(`[ClassView] 🚀 Firing processZoomRecording for ${resourceId}...`);
+    const result = await processZoomRecording(session.url, currentCourse?.id || '0', resourceId, currentCourse?.shortname || currentCourse?.fullname, resourceName, (status) => {
+      console.log(`[ClassView] 🔄 Zoom Progress (${resourceId}): ${status}`);
       setZoomStatuses(prev => ({ ...prev, [resourceId]: { ...prev[resourceId], status } }));
     });
     
+    console.log(`[ClassView] ✅ processZoomRecording returned:`, result);
     if (result.success) {
+      // Save to database for persistence
+      await dbService.updateResourceContent(resourceId, result.text, result.videoUrl, result.vttUrl);
+      console.log(`[ClassView] 💾 Saved to DB. Now setting state with videoUrl:`, result.videoUrl);
       setZoomStatuses(prev => ({
         ...prev,
-        [resourceId]: { loading: false, status: '¡Listo!', result: result.text }
+        [resourceId]: { loading: false, status: '¡Listo!', result: result.text, videoUrl: result.videoUrl, vttUrl: result.vttUrl }
       }));
+      console.log(`[ClassView] 🎯 State set complete for ${resourceId}:`, { loading: false, status: '¡Listo!', videoUrl: result.videoUrl, vttUrl: result.vttUrl });
     } else {
+      console.warn(`[ClassView] ❌ processZoomRecording failed:`, result.error);
       setZoomStatuses(prev => ({
         ...prev,
         [resourceId]: { loading: false, status: 'Error', error: result.error }
@@ -88,6 +103,24 @@ const ClassView = memo(({ session, onNavigate, currentCourse, courseLoading, onB
       }
     });
     return Array.from(categoryMap.values());
+  }, [visibleResources]);
+
+  // Get all Zoom classes for the calendar view with parsed dates
+  const zoomClasses = useMemo(() => {
+    return visibleResources
+      .filter(res => 
+        res.module === 'zoomutnba' || 
+        res.module === 'zoom' ||
+        (res.name && res.name.toLowerCase().includes('clase en vivo'))
+      )
+      .map(res => ({
+        ...res,
+        fechaInfo: parseZoomDate(res.name)
+      }))
+      .sort((a, b) => {
+        if (!a.fechaInfo || !b.fechaInfo) return 0;
+        return a.fechaInfo.timestamp - b.fechaInfo.timestamp;
+      });
   }, [visibleResources]);
 
   // Filter the lists based on active tab
@@ -187,6 +220,68 @@ const ClassView = memo(({ session, onNavigate, currentCourse, courseLoading, onB
         </div>
 
 
+        {/* Calendar / Timeline de Clases */}
+        {zoomClasses.length > 0 && (
+          <section>
+            <h2 className="text-stone-600 text-sm font-semibold uppercase tracking-wider mb-6 ml-1 flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Cronología de Clases
+            </h2>
+            
+            {(() => {
+              const { pasadas, futuras } = agruparClasesPorFecha(zoomClasses);
+              
+              return (
+                <div className="space-y-6">
+                  {/* Clases Pasadas */}
+                  {pasadas.length > 0 && (
+                    <div>
+                      <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-3 ml-1">
+                        Clases grabadas ({pasadas.length})
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {pasadas.map((clase) => (
+                          <ZoomClassCard 
+                            key={clase.id} 
+                            clase={clase} 
+                            fechaInfo={clase.fechaInfo}
+                            zoomStatus={zoomStatuses[clase.id]}
+                            onProcess={handleProcessZoom}
+                            onVideoClick={onVideoClick}
+                            esPasada={true}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Clases Futuras */}
+                  {futuras.length > 0 && (
+                    <div>
+                      <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3 ml-1">
+                        Próximas clases ({futuras.length})
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 opacity-60">
+                        {futuras.map((clase) => (
+                          <ZoomClassCard 
+                            key={clase.id} 
+                            clase={clase} 
+                            fechaInfo={clase.fechaInfo}
+                            zoomStatus={null}
+                            onProcess={null}
+                            onVideoClick={null}
+                            esPasada={false}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </section>
+        )}
+
 
         {/* Recent Resources Grid */}
         {recentResources.length > 0 && activeFilter === "All" && (
@@ -203,7 +298,7 @@ const ClassView = memo(({ session, onNavigate, currentCourse, courseLoading, onB
                   color={getResourceColor(index)}
                   onClick={() => {
                     if (resource.module === 'book') {
-                      onNavigate(VIEW_MODULE);
+                      onResourceClick?.(resource);
                     } else if (resource.url) {
                       window.open(resource.url, '_blank');
                     }
@@ -211,16 +306,36 @@ const ClassView = memo(({ session, onNavigate, currentCourse, courseLoading, onB
                 >
                   {/* Zoom Action rendered inside children */}
                   {getTabCategoryForModule(resource.module).label === 'Clase Virtual' && (
-                    <button 
-                      className="px-3 py-1.5 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-200 transition-colors flex items-center gap-1.5"
-                      onClick={(e) => handleProcessZoom(e, resource.id, resource.name)}
-                      disabled={zoomStatuses[resource.id]?.loading}
-                    >
-                      {zoomStatuses[resource.id]?.loading ? (
-                         <span className="loading loading-spinner loading-xs"></span>
-                      ) : <Video size={14} />}
-                      {zoomStatuses[resource.id]?.status || "Procesar Grabación"}
-                    </button>
+                    <>
+                        {console.log(`[ClassView] 🎬 Rendering buttons for resource ${resource.id}:`, resource.module, 'zoomStatuses:', zoomStatuses[resource.id])}
+                        {zoomStatuses[resource.id]?.videoUrl ? (
+                        <button 
+                          className="px-3 py-1.5 bg-green-100 text-green-700 text-xs font-semibold rounded-lg hover:bg-green-200 transition-colors flex items-center gap-1.5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onVideoClick?.({
+                              ...resource,
+                              videoUrl: zoomStatuses[resource.id].videoUrl,
+                              vttUrl: zoomStatuses[resource.id].vttUrl
+                            });
+                          }}
+                        >
+                          <PlayCircle size={14} />
+                          Ver Video
+                        </button>
+                      ) : (
+                        <button 
+                          className="px-3 py-1.5 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-200 transition-colors flex items-center gap-1.5"
+                          onClick={(e) => handleProcessZoom(e, resource.id, resource.name)}
+                          disabled={zoomStatuses[resource.id]?.loading}
+                        >
+                          {zoomStatuses[resource.id]?.loading ? (
+                             <span className="loading loading-spinner loading-xs"></span>
+                          ) : <Video size={14} />}
+                          {zoomStatuses[resource.id]?.status || "Procesar Grabación"}
+                        </button>
+                      )}
+                    </>
                   )}
                 </ResourceRowCard>
               ))}
@@ -275,25 +390,45 @@ const ClassView = memo(({ session, onNavigate, currentCourse, courseLoading, onB
                         color={getResourceColor(sectionIndex + index)}
                         onClick={() => {
                           if (resource.module === 'book') {
-                            onBookClick(resource.id);
-                            onNavigate(VIEW_MODULE);
+                            // onBookClick(resource.id); - removed since App handles it via onResourceClick
+                            onResourceClick?.(resource);
                           } else if (resource.url) {
                             window.open(resource.url, '_blank');
                           }
                         }}
                       >
-                         {resource.module === 'zoomutnba' && (
-                            <button 
-                              className="px-3 py-1.5 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-200 transition-colors flex items-center gap-1.5"
-                              onClick={(e) => handleProcessZoom(e, resource.id, resource.name)}
-                              disabled={zoomStatuses[resource.id]?.loading}
-                            >
-                              {zoomStatuses[resource.id]?.loading ? (
-                                 <span className="loading loading-spinner loading-xs"></span>
-                              ) : <Video size={14} />}
-                              {zoomStatuses[resource.id]?.status || "Procesar Grabación"}
-                            </button>
-                         )}
+                       {resource.module === 'zoomutnba' && (
+                              <>
+                                 {console.log(`[ClassView] 🎬 Rendering buttons for resource ${resource.id} (zoomutnba):`, 'zoomStatuses:', zoomStatuses[resource.id])}
+                                 {zoomStatuses[resource.id]?.videoUrl ? (
+                                  <button 
+                                    className="px-3 py-1.5 bg-green-100 text-green-700 text-xs font-semibold rounded-lg hover:bg-green-200 transition-colors flex items-center gap-1.5"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onVideoClick?.({
+                                        ...resource,
+                                        videoUrl: zoomStatuses[resource.id].videoUrl,
+                                        vttUrl: zoomStatuses[resource.id].vttUrl
+                                      });
+                                    }}
+                                  >
+                                   <PlayCircle size={14} />
+                                   Ver Video
+                                 </button>
+                               ) : (
+                                 <button 
+                                   className="px-3 py-1.5 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-200 transition-colors flex items-center gap-1.5"
+                                   onClick={(e) => handleProcessZoom(e, resource.id, resource.name)}
+                                   disabled={zoomStatuses[resource.id]?.loading}
+                                 >
+                                   {zoomStatuses[resource.id]?.loading ? (
+                                      <span className="loading loading-spinner loading-xs"></span>
+                                   ) : <Video size={14} />}
+                                   {zoomStatuses[resource.id]?.status || "Procesar Grabación"}
+                                 </button>
+                               )}
+                             </>
+                          )}
                       </ResourceRowCard>
 
                       {/* Render transcription if completed */}
@@ -330,6 +465,72 @@ const ClassView = memo(({ session, onNavigate, currentCourse, courseLoading, onB
     <BackToMoodleButton targetUrl={`${session?.url || ''}/course/view.php?id=${currentCourse.id}`} />
   )}
   </div>
+  );
+});
+
+// Componente de tarjeta para clase en el calendario
+const ZoomClassCard = memo(({ clase, fechaInfo, zoomStatus, onProcess, onVideoClick, esPasada }) => {
+  const tituloCorto = clase.name?.replace(/\[Clase en vivo\]\s*/i, '') || clase.name;
+  
+  const bgClass = esPasada ? 'bg-white border-stone-200 hover:border-indigo-400' : 'bg-stone-50 border-stone-100';
+  const textClass = esPasada ? 'text-stone-900' : 'text-stone-400';
+  
+  return (
+    <div className={`p-4 rounded-xl border ${bgClass} transition-all`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <h4 className={`font-semibold text-sm leading-tight ${textClass} line-clamp-2`}>
+            {tituloCorto}
+          </h4>
+          <p className={`text-xs mt-1 ${esPasada ? 'text-indigo-600' : 'text-stone-400'}`}>
+            {fechaInfo ? formatearFechaClase(fechaInfo) : 'Sin fecha'}
+          </p>
+        </div>
+        
+        {esPasada && onProcess && (
+          <div className="shrink-0">
+            {zoomStatus?.videoUrl ? (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onVideoClick?.({
+                    ...clase,
+                    videoUrl: zoomStatus.videoUrl,
+                    vttUrl: zoomStatus.vttUrl
+                  });
+                }}
+                className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                title="Ver Video"
+              >
+                <PlayCircle size={16} />
+              </button>
+            ) : (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onProcess(e, clase.id, clase.name);
+                }}
+                disabled={zoomStatus?.loading}
+                className="p-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors disabled:opacity-50"
+                title="Procesar"
+              >
+                {zoomStatus?.loading ? (
+                  <span className="loading loading-spinner loading-xs"></span>
+                ) : (
+                  <Video size={16} />
+                )}
+              </button>
+            )}
+          </div>
+        )}
+        
+        {!esPasada && (
+          <div className="shrink-0 p-2 bg-stone-100 rounded-lg">
+            <Clock size={16} className="text-stone-400" />
+          </div>
+        )}
+      </div>
+    </div>
   );
 });
 

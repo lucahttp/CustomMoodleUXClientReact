@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 .vite/
 package-lock.json
 dist.zip
+caddy_data/
+minio_data/
+caddy_config/

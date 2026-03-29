@@ -8,14 +8,11 @@ export const dbService = {
   observeCourses: () => database.collections.get('courses').query().observe(),
 
   async saveCourses(apiCourses) {
+    console.log(`[DB] 📚 saveCourses: syncing ${apiCourses?.length || 0} courses...`);
     const coursesCollection = database.collections.get('courses');
 
     await database.write(async () => {
       const batchOperations = [];
-
-      // We need to check which courses already exist to update them, and which are new
-      // For simplicity in this example, we'll iterate. 
-      // In a large app, you'd fetch all IDs first.
 
       for (const apiCourse of apiCourses) {
         const existing = await coursesCollection.query(Q.where('id', apiCourse.id.toString())).fetch();
@@ -28,13 +25,12 @@ export const dbService = {
               c.shortname = apiCourse.shortname;
               c.summary = apiCourse.summary;
               c.courseimage = apiCourse.courseimage;
-              // Don't overwrite color if it exists, or do? Let's keep it if we calculated it.
             })
           );
         } else {
           batchOperations.push(
             coursesCollection.prepareCreate(c => {
-              c._raw.id = apiCourse.id.toString(); // WatermelonDB uses string IDs
+              c._raw.id = apiCourse.id.toString(); 
               c.fullname = apiCourse.fullname;
               c.shortname = apiCourse.shortname;
               c.summary = apiCourse.summary;
@@ -45,6 +41,7 @@ export const dbService = {
       }
 
       await database.batch(...batchOperations);
+      console.log(`[DB] ✅ saveCourses complete.`);
     });
   },
 
@@ -59,8 +56,8 @@ export const dbService = {
   },
 
   async updateResourceContent(resourceId, contentStr, videoUrl = null, vttUrl = null) {
+    console.log(`[DB] 📀 updateResourceContent ID: ${resourceId} | hasContent: ${!!contentStr}, videoUrl: ${videoUrl}`);
     const resourcesCollection = database.collections.get('resources');
-    // Using query because WatermelonDB string IDs might not map directly to find() without knowing if they exist
     const existing = await resourcesCollection.query(Q.where('id', resourceId.toString())).fetch();
     if (existing.length > 0) {
       const resource = existing[0];
@@ -70,26 +67,33 @@ export const dbService = {
           if (videoUrl !== null) r.videoUrl = videoUrl;
           if (vttUrl !== null) r.vttUrl = vttUrl;
         });
+        console.log(`[DB] ✅ updateResourceContent Success for ${resourceId}`);
       });
+    } else {
+      console.warn(`[DB] ⚠️ updateResourceContent: Resource ${resourceId} not found in DB!`);
     }
   },
 
   // --- Resources & Details ---
 
+  async getResourceById(resourceId) {
+    console.log(`[DB] 🔍 getResourceById: ${resourceId}`);
+    const resourcesCollection = database.collections.get('resources');
+    const existing = await resourcesCollection.query(Q.where('id', resourceId.toString())).fetch();
+    const found = existing.length > 0 ? existing[0] : null;
+    console.log(`[DB] 🔍 getResourceById result: ${found ? 'FOUND' : 'MISSING'}`);
+    return found;
+  },
+
   async saveFullCourseData(courseId, data) {
-    // data = { course, section, cm }
+    console.log(`[DB] 🗃️ saveFullCourseData for Course ${courseId}. Modules to process: ${data.cm?.length || 0}`);
     const resourcesCollection = database.collections.get('resources');
 
     await database.write(async () => {
       const batchOperations = [];
 
-      // 1. Update Course details if needed
-      // We could update the course summary or other details from data.course
-
-      // 2. Sync Resources (Modules)
       if (data.cm) {
         for (const mod of data.cm) {
-          // Check if exists
           const existing = await resourcesCollection.query(
             Q.where('id', mod.id.toString())
           ).fetch();
@@ -97,10 +101,9 @@ export const dbService = {
           if (existing.length > 0) {
             batchOperations.push(existing[0].prepareUpdate(r => {
               r.name = mod.name;
-              r.type = mod.modname; // e.g. 'url', 'book', 'resource'
+              r.type = mod.modname; 
               r.url = mod.url;
               r.course.id = courseId.toString();
-              // r.sectionName = ... find section name by mod.section (id)
             }));
           } else {
             batchOperations.push(resourcesCollection.prepareCreate(r => {
@@ -115,20 +118,20 @@ export const dbService = {
       }
 
       await database.batch(...batchOperations);
+      console.log(`[DB] ✅ saveFullCourseData complete for ${courseId}.`);
     });
   },
 
   // --- Search ---
 
   async search(text) {
+    console.log(`[DB] 🔎 Search query: "${text}"`);
     if (!text || text.trim() === '') {
       return { courses: [], resources: [] };
     }
 
     const tokens = text.toLowerCase().split(/\s+/).filter(t => t.length > 0);
 
-    // Creates an array of Q.or conditions for each token
-    // For courses: token matches 'fullname', 'shortname', or 'summary'
     const courseConditions = tokens.map(token => 
       Q.or(
         Q.where('fullname', Q.like(`%${token}%`)),
@@ -137,7 +140,6 @@ export const dbService = {
       )
     );
 
-    // Creates an array of Q.where conditions for resources
     const resourceConditions = tokens.map(token =>
       Q.or(
         Q.where('name', Q.like(`%${token}%`)),
@@ -145,17 +147,65 @@ export const dbService = {
       )
     );
 
-    // 1. Search Courses
     const courses = await database.collections.get('courses').query(
       Q.and(...courseConditions)
     ).fetch();
 
-    // 2. Search Resources
     const resources = await database.collections.get('resources').query(
       Q.and(...resourceConditions)
     ).fetch();
 
-    return { courses, resources };
+    // Enhancing resources with match info if it came from content (VTT)
+    const enrichedResources = resources.map(r => {
+      if (!r.content) return r;
+
+      const contentLower = r.content.toLowerCase();
+      const firstToken = tokens[0];
+      const matchIndex = contentLower.indexOf(firstToken);
+
+      if (matchIndex === -1) return r;
+
+      // Try to find the timestamp in the VTT format
+      // Format: HH:MM:SS.mmm --> HH:MM:SS.mmm
+      // We look backwards from the matchIndex for the closest timestamp
+      const contentBefore = r.content.substring(0, matchIndex);
+      const linesBefore = contentBefore.split('\n');
+      
+      let timestamp = null;
+      // Regex for VTT timestamp line
+      const vttRegex = /(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})/;
+      
+      for (let i = linesBefore.length - 1; i >= 0; i--) {
+        const line = linesBefore[i].trim();
+        const match = line.match(vttRegex);
+        if (match) {
+          timestamp = match[1]; // Start time
+          break;
+        }
+      }
+
+      // Extract snippet
+      const snippetStart = Math.max(0, matchIndex - 60);
+      const snippetEnd = Math.min(r.content.length, matchIndex + 100);
+      let snippet = r.content.substring(snippetStart, snippetEnd);
+      
+      // Clean up snippets if they contain timestamps
+      snippet = snippet.replace(vttRegex, '').replace(/-->/g, '').trim();
+
+      return {
+        ...r,
+        _raw: {
+            ...r._raw,
+            snippet: snippet,
+            timestamp: timestamp
+        },
+        snippet: snippet,
+        timestamp: timestamp
+      };
+    });
+
+    console.log(`[DB] 🔎 Search results: ${courses.length} courses, ${enrichedResources.length} resources.`);
+    return { courses, resources: enrichedResources };
   },
 
   // --- Sync All ---

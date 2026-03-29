@@ -13,7 +13,9 @@ export const useMoodle = () => {
 
   // 1. Listen for the Extension Injection Event
   useEffect(() => {
+    console.log(`[useMoodle] 🔌 Initializing extension session listener...`);
     const handleSessionKey = (event) => {
+      console.log(`[useMoodle] 🔑 Received session key event! key exists? ${!!event.detail.sesskey}`);
       if (event.detail.sesskey) {
         setSession({
           key: event.detail.sesskey,
@@ -23,6 +25,7 @@ export const useMoodle = () => {
     };
     window.addEventListener("variableValueRetrieved2", handleSessionKey);
     // Trigger the fetch mechanism from the content script
+    console.log(`[useMoodle] 📡 Dispatching getSessionObject to content script...`);
     window.dispatchEvent(new CustomEvent("getSessionObject", { detail: null }));
     return () => window.removeEventListener("variableValueRetrieved2", handleSessionKey);
   }, []);
@@ -32,13 +35,14 @@ export const useMoodle = () => {
     if (!session.key) return;
 
     const loadCourses = async () => {
+      console.log(`[useMoodle] 🎓 Session ready. Fetching enrolled courses via API...`);
       setLoading(true);
       try {
         const data = await api.fetchCourses(session.url, session.key);
-        console.log("Fetched Courses from Moodle API", data);
+        console.log(`[useMoodle] 🎓 Received ${data?.courses?.length || 0} courses from Moodle API`);
         // Save to DB
         dbService.saveCourses(data.courses);
-        console.log("Synced Courses to DB");
+        console.log(`[useMoodle] 💾 Saved courses to local WatermelonDB`);
 
         // Process Colors in background
         data.courses.forEach(async (c) => {

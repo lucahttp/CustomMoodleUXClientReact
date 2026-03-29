@@ -1,25 +1,39 @@
 export const MOODLE_SERVICE_URL = "/lib/ajax/service.php";
 
 const moodlePost = async (endpoint, sessionKey, calls) => {
-  const response = await fetch(`${endpoint}${MOODLE_SERVICE_URL}?sesskey=${sessionKey}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(calls),
-  });
-  if (!response.ok) throw new Error("Moodle API request failed");
-  return await response.json();
+  console.log(`[API] 📡 POST ${endpoint}${MOODLE_SERVICE_URL} | Payload:`, calls);
+  try {
+    const response = await fetch(`${endpoint}${MOODLE_SERVICE_URL}?sesskey=${sessionKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(calls),
+    });
+    if (!response.ok) {
+       console.error(`[API] ❌ Moodle POST failed: ${response.status} ${response.statusText}`);
+       throw new Error("Moodle API request failed");
+    }
+    const json = await response.json();
+    console.log(`[API] ✅ Moodle POST response:`, json);
+    return json;
+  } catch (e) {
+    console.error(`[API] 🔥 Error executing moodlePost:`, e);
+    throw e;
+  }
 };
 
 export const fetchCourses = async (endpoint, sessionKey) => {
+  console.log(`[API] 📚 Fetching user enrolled courses...`);
   const data = await moodlePost(endpoint, sessionKey, [{
     index: 0,
     methodname: "core_course_get_enrolled_courses_by_timeline_classification",
     args: { offset: 0, limit: 0, classification: "all", sort: "fullname" },
   }]);
+  console.log(`[API] 📚 Fetched ${data[0]?.data?.courses?.length || 0} courses.`);
   return data[0]?.data;
 };
 
 export const fetchCourseDetails = async (endpoint, sessionKey, courseId) => {
+  console.log(`[API] 📖 Fetching details for Course ID: ${courseId}`);
   const data = await moodlePost(endpoint, sessionKey, [{
     index: 0,
     methodname: "core_courseformat_get_state",
@@ -28,16 +42,29 @@ export const fetchCourseDetails = async (endpoint, sessionKey, courseId) => {
 
   if (data && !data[0]?.error) {
     const httpResponse = JSON.parse(data[0].data);
+    console.log(`[API] 📖 Course details parsed! Found ${httpResponse.cm?.length || 0} course modules.`);
     return httpResponse;
   }
+  console.error(`[API] ❌ Failed to load course details:`, data[0]?.error);
   throw new Error("Failed to load course details.");
 };
 
 export const fetchBookContentHTML = async (endpoint, bookId) => {
   const url = `${endpoint}/mod/book/tool/print/index.php?id=${bookId}`;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error("Failed to load book");
-  return await response.text();
+  console.log(`[API] 📑 Fetching book HTML from: ${url}`);
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+       console.error(`[API] ❌ Fetch book failed: ${response.status}`);
+       throw new Error("Failed to load book");
+    }
+    const html = await response.text();
+    console.log(`[API] 📑 Book downloaded (Size: ${Math.round(html.length / 1024)}KB)`);
+    return html;
+  } catch(e) {
+    console.error(`[API] 🔥 Error downloading book:`, e);
+    throw e;
+  }
 };
 
 /** Fetch assignments for a course */

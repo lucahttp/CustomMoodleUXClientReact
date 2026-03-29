@@ -3,7 +3,7 @@ import { MonitorPlay } from 'lucide-react';
 import { parseBookContent } from "../utils/bookParser";
 import "./BookReader.css";
 
-const BookReader = ({ htmlContent, endpoint, onBack }) => {
+const BookReader = ({ htmlContent, endpoint, anchorId, onBack }) => {
   console.log("BookReader rendering");
 
   // Parse HTML string into Data Object
@@ -13,9 +13,21 @@ const BookReader = ({ htmlContent, endpoint, onBack }) => {
   }, [htmlContent, endpoint]);
 
   useEffect(() => {
-    console.log("BookReader mounted");
+    console.log("BookReader mounted, checking for deep link...");
+    if (anchorId) {
+        // Small delay to ensure the browser painted the parsed heights
+        setTimeout(() => {
+            const el = document.getElementById(anchorId);
+            if (el) {
+                console.log(`[BookReader] 📜 Scrolling to anchor: ${anchorId}`);
+                el.scrollIntoView({ behavior: "smooth", block: "start" });
+            } else {
+               console.warn(`[BookReader] ⚠️ Target anchor #${anchorId} not found in DOM.`);
+            }
+        }, 300);
+    }
     return () => console.log("BookReader unmounted");
-  }, []);
+  }, [anchorId, bookData]);
 
   return (
     <div className="book-reader-container animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -27,7 +39,7 @@ const BookReader = ({ htmlContent, endpoint, onBack }) => {
 
       <div className="space-y-12 mt-8">
         {bookData.chapters.map((chapter, index) => (
-          <div key={index} className="chapter-block">
+          <div key={index} id={chapter.id} className="chapter-block">
             <h2 className="text-2xl font-semibold border-b pb-2 mb-4">
               {chapter.title}
             </h2>

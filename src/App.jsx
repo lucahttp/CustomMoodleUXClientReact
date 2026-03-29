@@ -4,15 +4,17 @@ import { useWebMCP } from "./hooks/useWebMCP";
 import DashboardView from "./components/DashboardView";
 import ClassView from "./components/ClassView";
 import BookReader from "./components/BookReader";
+import { VideoPlayer } from "./components/VideoPlayer";
 import { fetchCourseDetails, fetchBookContentHTML } from "./api/moodle";
-import { processZoomRecording } from "./api/zoomProcessor";
+import { processZoomRecording, findVideoInMinio } from "./api/zoomProcessor";
 import { Logo, Sidebar, BackToMoodleButton } from "./components/ui"; // Assuming you split these out
 import { Menu, X, Sparkles } from "lucide-react";
 
 import { dbService } from "./db/service";
+import { ingestMoodleBook, ingestZoomRecording } from "./db/pgliteIngest";
 
 // View Constants
-const VIEWS = { DASHBOARD: "dashboard", CLASS: "class", BOOK: "book" };
+const VIEWS = { DASHBOARD: "dashboard", CLASS: "class", BOOK: "book", VIDEO: "video" };
 
 const App = () => {
   // 1. Data & State
@@ -22,24 +24,111 @@ const App = () => {
   const [currentView, setCurrentView] = useState(VIEWS.DASHBOARD);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [bookContent, setBookContent] = useState(null);
+  const [bookAnchor, setBookAnchor] = useState(null);
+  const [videoResource, setVideoResource] = useState(null);
   const [uiLoading, setUiLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState(null);
   const [syncProgress, setSyncProgress] = useState(null); // { current: number, total: number }
+  const [syncLogs, setSyncLogs] = useState([]); // Console mini logs
   const [globalSyncing, setGlobalSyncing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const handleBookClick = useCallback(async (bookId) => {
+  const handleResourceClick = useCallback(async (res, startTime = null) => {
+    console.log(`[App] 🖱️ Clicked resource: "${res.name}" (ID: ${res.id})`);
+    if (startTime) console.log(`[App] ⏱️ Seeking to timestamp: ${startTime}`);
+    
     setUiLoading(true);
     try {
-      const html = await fetchBookContentHTML(session.url, bookId);
-      setBookContent(html);
-      setCurrentView(VIEWS.BOOK);
+      const isBook = res.modname?.toLowerCase().includes('book') || res.modname?.toLowerCase().includes('libro') || res.module?.toLowerCase().includes('book');
+      const isZoom = res.modname?.toLowerCase().includes('zoom') || res.modname?.toLowerCase().includes('clase en vivo') || res.module?.toLowerCase().includes('zoom') || res.type?.includes('zoom');
+      
+      console.log(`[App] 🔍 identified type: isBook=${isBook}, isZoom=${isZoom}`);
+      const dbRes = await dbService.getResourceById(res.id);
+
+      if (isBook) {
+        console.log(`[App] 📖 Loading Book: ${res.id}`);
+        const html = await fetchBookContentHTML(session.url, res.id);
+        
+        console.log(`[App] 💾 Ingesting Moodle Book into PGlite FTS...`);
+        // The ingest engine internally truncates old chapters and replaces FTS records safely
+        await ingestMoodleBook(res.id, res.course?.id || selectedCourse?.id || '0', session.url, res.name, html);
+        
+        setBookContent(html);
+        setBookAnchor(startTime); // we reuse startTime param for anchor IDs
+        setCurrentView(VIEWS.BOOK);
+      } else if (isZoom) {
+        // Support direct videoUrl from resource or from DB
+        const videoUrl = res.videoUrl || dbRes?.videoUrl;
+        const vttUrl = res.vttUrl || dbRes?.vttUrl;
+        
+        console.log(`[App] 🎥 Opening Zoom Player: ${res.id}. URL exists? ${!!videoUrl}`);
+        if (videoUrl) {
+          setVideoResource({ 
+            ...res, 
+            videoUrl: videoUrl, 
+            vttUrl: vttUrl,
+            startTime: startTime // Pass the timestamp here
+          });
+          setCurrentView(VIEWS.VIDEO);
+        } else {
+          try {
+             let cName = selectedCourse?.fullname;
+             if (!cName && res.course?.id) {
+                try {
+                   const c = await dbService.getCoursesCollection().find(res.course.id.toString());
+                   if (c) cName = c.fullname;
+                } catch(e) { }
+             }
+             console.log(`[App] 🕵️ Minio fallback search -> courseName: "${cName}", resource: "${res.name}"`);
+             const foundUrls = await findVideoInMinio(cName, res.name, res.id);
+          
+             if (foundUrls) {
+               console.log(`[App] ✨ Found in Minio Headless! URLs:`, foundUrls);
+               try {
+                  const vttRes = await fetch(foundUrls.vttUrl);
+                  const text = vttRes.ok ? await vttRes.text() : '';
+                  // Ingest direct
+                  await ingestZoomRecording(res.id, res.course?.id || selectedCourse?.id || '0', res.name, null, text, "Auto-indexado remoto localmente");
+                  
+                  setVideoResource({ 
+                    ...res, 
+                    videoUrl: foundUrls.mp4Url, 
+                    vttUrl: foundUrls.vttUrl,
+                    startTime: startTime 
+                  });
+                  setCurrentView(VIEWS.VIDEO);
+               } catch (e) {
+                  console.error(`[App] ❌ Error syncing metadata after Minio hit`, e);
+                  setVideoResource({ 
+                    ...res, 
+                    videoUrl: foundUrls.mp4Url, 
+                    vttUrl: foundUrls.vttUrl,
+                    startTime: startTime
+                  });
+                  setCurrentView(VIEWS.VIDEO);
+               }
+             } else {
+               console.log(`[App] 🚫 Not found in Minio fallback.`);
+               alert('Este video aún no ha sido sincronizado (procesado). Hacé click en el botón de la tarjeta o corré el Download All Content del Inicio.');
+             }
+          } catch(e) {
+             console.error("[App] 🔥 Error minio query", e);
+             alert("Error buscando el video en Minio.");
+          }
+        }
+      } else {
+        if (res.url) {
+           console.log(`[App] 🔗 External link click: ${res.url}`);
+           window.open(res.url, '_blank');
+        }
+      }
     } catch (e) {
-      console.error(e);
+      console.error(`[App] 🔥 handleResourceClick Fatal Error:`, e);
+      alert("Error abriendo recurso.");
     } finally {
       setUiLoading(false);
     }
-  }, [session]);
+  }, [session, selectedCourse]);
 
   // 3. Handlers
   const handleSyncAll = useCallback(async () => {
@@ -48,8 +137,16 @@ const App = () => {
     // Switch to non-blocking background mode
     setGlobalSyncing(true);
     setSyncStatus("Iniciando sincronización global...");
+    setSyncLogs([]);
     
-    let stats = { courses: 0, books: 0, zoomSuccess: 0, zoomFailed: 0 };
+    const addSyncLog = (msg) => {
+      setSyncLogs(prev => {
+        const newLogs = [...prev, msg];
+        return newLogs.slice(-4); // Keep only the last 4 logs
+      });
+    };
+    
+    let stats = { courses: 0, books: 0, zoomSuccess: 0, zoomFailed: 0, skipped: 0 };
     
     try {
       const dbCourses = await dbService.getCoursesCollection().query().fetch();
@@ -58,7 +155,8 @@ const App = () => {
       for (let i = 0; i < dbCourses.length; i++) {
         const course = dbCourses[i];
         setSyncProgress({ current: i + 1, total: dbCourses.length });
-        setSyncStatus(`Sincronizando materia: ${course.fullname}`);
+        setSyncStatus(`Analizando materia: ${course.fullname}`);
+        addSyncLog(`>> [${course.shortname}] Iniciando...`);
         const details = await fetchCourseDetails(session.url, session.key, course.id);
         
         stats.courses++;
@@ -68,57 +166,89 @@ const App = () => {
 
         console.log(`[SYNC DEBUG] Course ${course.id}: "${course.fullname}"`);
         if (details.cm) {
-          console.log(`[SYNC DEBUG] -> has ${details.cm.length} modules to scan.`);
           for (const mod of details.cm) {
-            console.log(`[SYNC DEBUG]   -> Module: "${mod.name}" | Type: "${mod.modname}"`);
-            
             const modLower = mod.modname?.toLowerCase() || '';
             const isBook = modLower.includes('book') || modLower.includes('libro');
             const isZoom = modLower.includes('zoom') || modLower.includes('clase en vivo');
             
+            // Check delta sync
+            if (isBook || isZoom) {
+              const existingRes = await dbService.getResourceById(mod.id);
+              if (existingRes && (existingRes.content || existingRes.videoUrl)) {
+                console.log(`[Sync All] ⏭️ Skipping ${mod.modname} "${mod.name}" (ID: ${mod.id}). Already in local DB.`);
+                stats.skipped++;
+                continue;
+              }
+            }
+            
             if (isBook) {
+              console.log(`[Sync All] 📖 Processing Book: "${mod.name}" (ID: ${mod.id})`);
               setSyncStatus(`Descargando Libro: ${mod.name}`);
+              addSyncLog(`📝 [Libro] ${mod.name}`);
               try {
-                // Fetch the HTML and strip it to save pure text for the full-text search engine
-                const bookHtml = await fetchBookContentHTML(session.url, mod.id);
-                if (bookHtml) {
-                  const plainText = bookHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-                                            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-                                            .replace(/<[^>]+>/g, ' ')
-                                            .replace(/\s{2,}/g, ' ')
-                                            .trim();
-                  await dbService.updateResourceContent(mod.id, plainText);
-                  stats.books++;
-                }
+                const html = await fetchBookContentHTML(session.url, mod.id);
+                await ingestMoodleBook(mod.id, course.id, session.url, mod.name, html);
+                stats.books++;
+                console.log(`[Sync All] ✅ Book "${mod.name}" synced.`);
               } catch (e) {
-                console.error(`Error fetching book ${mod.id}`, e);
+                console.error(`[Sync All] ❌ Error fetching book ${mod.id}`, e);
+                addSyncLog(`❌ Error en libro: ${mod.name}`);
               }
             } else if (isZoom) {
-              setSyncStatus(`Descargando Grabación: ${mod.name}`);
+              const months = {
+                enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5,
+                julio: 6, agosto: 7, septiembre: 8, octubre: 9, noviembre: 10, diciembre: 11
+              };
+              const match = mod.name.match(/(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+de\s+(\d{4})\s*-\s*(\d{1,2}):(\d{2})/i);
+              
+              if (match) {
+                const day = parseInt(match[1], 10);
+                const month = months[match[2].toLowerCase()];
+                const year = parseInt(match[3], 10);
+                const hour = parseInt(match[4], 10);
+                const minute = parseInt(match[5], 10);
+            
+                const classDate = new Date(year, month, day, hour, minute);
+                // Require the class to have finished (e.g. 2 hours after start) before processing
+                const classEndTime = new Date(classDate.getTime() + 2 * 60 * 60 * 1000);
+                if (classEndTime > new Date()) {
+                  console.log(`[Sync All] ⏭️ Skipping future/ongoing Zoom class: "${mod.name}" (ID: ${mod.id}).`);
+                  stats.skipped++;
+                  continue;
+                }
+              }
+
+              console.log(`[Sync All] 🎥 Processing Zoom: "${mod.name}" (ID: ${mod.id})`);
+              setSyncStatus(`Transcribiendo Grabación: ${mod.name}`);
+              addSyncLog(`🎥 [Zoom] Iniciando transcripción local...`);
               try {
-                // Wait for the entire transcribing process sequentially to not fry the GPU
+                console.log(`[Sync All] 🚀 Firing processZoomRecording for ${mod.id}...`);
                 const result = await processZoomRecording(
-                  session.url, 
+                  session.url,
+                  course.id, 
                   mod.id, 
                   course.fullname, 
                   mod.name, 
-                  (status) => {
-                    setSyncStatus(`Grabación ${mod.name}: ${status}`);
+                  (p) => {
+                     console.log(`[Sync All] 🔄 Zoom Sub-progress (${mod.id}): ${p}`);
+                     addSyncLog(`  - ${p}`);
                   }
                 );
                 
-                // If we successfully received the transcribed VTT text, save it to the DB for full-text search
+                console.log(`[Sync All] ✅ processZoomRecording result for ${mod.id}:`, result);
                 if (result && result.success && result.text) {
-                  await dbService.updateResourceContent(mod.id, result.text, result.videoUrl, result.vttUrl);
+                  // Ya no invocamos dbService.updateResourceContent aquí, processZoomRecording se encarga nativamente.
                   stats.zoomSuccess++;
+                  addSyncLog(`✅ ¡Grabación procesada con éxito!`);
                 } else {
+                  console.warn(`[Sync All] ⚠️ Zoom failed for ${mod.id}:`, result.error || "No video available");
                   stats.zoomFailed++;
-                  // pause 2 seconds so the user can read the error message on screen
-                  await new Promise(r => setTimeout(r, 2000));
+                  addSyncLog(`⚠️ Grabación fallida/no disponible.`);
                 }
               } catch (e) {
-                console.error(`Error processing zoom ${mod.id}`, e);
+                console.error(`[Sync All] 🔥 Fatal Error in Zoom Loop for ${mod.id}`, e);
                 stats.zoomFailed++;
+                addSyncLog(`❌ Error extremo.`);
               }
             }
           }
@@ -191,9 +321,6 @@ const App = () => {
                 <div className="w-20 h-20 bg-white rounded-2xl shadow-xl flex items-center justify-center relative z-10 border border-indigo-50">
                    <span className="loading loading-spinner text-indigo-600 w-8 h-8"></span>
                 </div>
-                <div className="absolute -top-2 -right-2 text-indigo-400 rotate-12">
-                   <Sparkles className="w-5 h-5 animate-pulse" />
-                </div>
               </div>
               <div className="text-center">
                 <h3 className="text-xl font-bold text-stone-800">Cargando Moodle UX...</h3>
@@ -208,6 +335,7 @@ const App = () => {
               loading={loading}
               onCourseClick={handleCourseClick}
               onSyncAll={handleSyncAll}
+              onResourceClick={handleResourceClick}
             />
           )}
 
@@ -217,7 +345,16 @@ const App = () => {
               onNavigate={setCurrentView}
               currentCourse={selectedCourse}
               onBack={() => setCurrentView(VIEWS.DASHBOARD)}
-              onBookClick={handleBookClick}
+              onResourceClick={handleResourceClick}
+              onVideoClick={(resource) => {
+                console.log(`[App] 🎬 Opening Video via onVideoClick:`, resource);
+                setVideoResource({
+                  ...resource,
+                  videoUrl: resource.videoUrl,
+                  vttUrl: resource.vttUrl
+                });
+                setCurrentView(VIEWS.VIDEO);
+              }}
             />
           )}
 
@@ -225,6 +362,14 @@ const App = () => {
             <BookReader
               htmlContent={bookContent}
               endpoint={session.url}
+              anchorId={bookAnchor}
+              onBack={() => setCurrentView(VIEWS.CLASS)}
+            />
+          )}
+
+          {!uiLoading && currentView === VIEWS.VIDEO && videoResource && (
+            <VideoPlayer
+              resource={videoResource}
               onBack={() => setCurrentView(VIEWS.CLASS)}
             />
           )}
