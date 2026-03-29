@@ -58,6 +58,22 @@ export const dbService = {
     });
   },
 
+  async updateResourceContent(resourceId, contentStr, videoUrl = null, vttUrl = null) {
+    const resourcesCollection = database.collections.get('resources');
+    // Using query because WatermelonDB string IDs might not map directly to find() without knowing if they exist
+    const existing = await resourcesCollection.query(Q.where('id', resourceId.toString())).fetch();
+    if (existing.length > 0) {
+      const resource = existing[0];
+      await database.write(async () => {
+        await resource.update(r => {
+          if (contentStr !== null) r.content = contentStr;
+          if (videoUrl !== null) r.videoUrl = videoUrl;
+          if (vttUrl !== null) r.vttUrl = vttUrl;
+        });
+      });
+    }
+  },
+
   // --- Resources & Details ---
 
   async saveFullCourseData(courseId, data) {
@@ -123,7 +139,10 @@ export const dbService = {
 
     // Creates an array of Q.where conditions for resources
     const resourceConditions = tokens.map(token =>
-      Q.where('name', Q.like(`%${token}%`))
+      Q.or(
+        Q.where('name', Q.like(`%${token}%`)),
+        Q.where('content', Q.like(`%${token}%`))
+      )
     );
 
     // 1. Search Courses

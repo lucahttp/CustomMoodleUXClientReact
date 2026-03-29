@@ -31,12 +31,6 @@ import { dbService } from "../db/service";
 const VIEW_CLASS = "class";
 const VIEW_DASHBOARD = "dashboard";
 
-const COURSES_RECENT = [
-  { id: 1, title: "CCNA 2020 200-125 Video Boot Camp", color: "pink" },
-
-  { id: 2, title: "Diseño 2D", color: "beige", onClickView: VIEW_CLASS }, // Link to Class View
-];
-
 const DashboardView = memo(
   ({ session, onNavigate, courses, loading, onCourseClick, onSyncAll }) => {
     const [searchTerm, setSearchTerm] = useState("");
@@ -44,6 +38,32 @@ const DashboardView = memo(
     const [isSearching, setIsSearching] = useState(false);
     const [pendingTasks, setPendingTasks] = useState([]);
     const [loadingTasks, setLoadingTasks] = useState(false);
+
+    // Initialize recent courses from localStorage
+    const [recentCourses, setRecentCourses] = useState(() => {
+      try {
+        const saved = localStorage.getItem('mux-recent-courses');
+        return saved ? JSON.parse(saved) : [];
+      } catch (e) {
+        return [];
+      }
+    });
+
+    const handleCourseSelect = useCallback((courseId) => {
+      // Find course details to save to recents
+      const course = courses?.find(c => c.id === courseId) || searchResults.courses.find(c => c.id === courseId);
+      if (course) {
+        setRecentCourses(prev => {
+          const newRecent = [
+            { id: course.id, title: course.fullname, color: course.color || "#F5E1C0", onClickView: VIEW_CLASS },
+            ...prev.filter(c => c.id !== course.id)
+          ].slice(0, 4); // Keep top 4 recent courses
+          localStorage.setItem('mux-recent-courses', JSON.stringify(newRecent));
+          return newRecent;
+        });
+      }
+      onCourseClick(courseId);
+    }, [courses, searchResults, onCourseClick]);
 
     useEffect(() => {
       if (session?.url && session?.key) {
@@ -122,7 +142,7 @@ const DashboardView = memo(
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {searchResults.courses.map(c => (
-                  <div key={c.id} onClick={() => onCourseClick(c.id)} className="p-5 flex items-start gap-4 bg-white border border-stone-200 rounded-xl cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all group">
+                  <div key={c.id} onClick={() => handleCourseSelect(c.id)} className="p-5 flex items-start gap-4 bg-white border border-stone-200 rounded-xl cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all group">
                     <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-100 transition-colors">
                       <LayoutGrid className="w-5 h-5" />
                     </div>
@@ -134,7 +154,7 @@ const DashboardView = memo(
                 ))}
                 
                 {searchResults.resources.map(r => (
-                  <div key={r.id} onClick={() => onCourseClick(r.course.id)} className="p-5 flex items-start gap-4 bg-white border border-stone-200 rounded-xl cursor-pointer hover:border-violet-400 hover:shadow-md transition-all group">
+                  <div key={r.id} onClick={() => handleCourseSelect(r.course.id)} className="p-5 flex items-start gap-4 bg-white border border-stone-200 rounded-xl cursor-pointer hover:border-violet-400 hover:shadow-md transition-all group">
                     <div className="p-3 bg-violet-50 text-violet-600 rounded-lg group-hover:bg-violet-100 transition-colors">
                       <Folder className="w-5 h-5" />
                     </div>
@@ -195,23 +215,25 @@ const DashboardView = memo(
               </section>
             )}
 
-            <section>
-              <h2 className="text-stone-600 text-sm font-semibold uppercase tracking-wider mb-6 ml-1">
-                Ultimos cursos vistos
-              </h2>
+            {recentCourses.length > 0 && (
+              <section>
+                <h2 className="text-stone-600 text-sm font-semibold uppercase tracking-wider mb-6 ml-1">
+                  Últimos cursos vistos
+                </h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {COURSES_RECENT.map((course) => (
-                  <CourseCard
-                    key={course.id}
-                    {...course}
-                    onClick={() =>
-                      course.onClickView ? onNavigate(course.onClickView) : null
-                    }
-                  />
-                ))}
-              </div>
-            </section>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {recentCourses.map((course) => (
+                    <CourseCard
+                      key={course.id}
+                      {...course}
+                      onClick={() =>
+                        course.onClickView ? handleCourseSelect(course.id) : null
+                      }
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
             {!loading && (
               <section>
                 <h2 className="text-stone-600 text-sm font-semibold uppercase tracking-wider mb-6 ml-1">
@@ -230,7 +252,7 @@ const DashboardView = memo(
                           key={course.id}
                           title={course.fullname}
                           color={course.color || "#F5E1C0"}
-                          onClick={() => onCourseClick(course.id)}
+                          onClick={() => handleCourseSelect(course.id)}
                         />
                       ))
                     )}

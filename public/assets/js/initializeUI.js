@@ -19,6 +19,23 @@
 
 // This script injects a button into the page that, when clicked, will remove all existing content from the body and inject a new React component.
 (() => {
+  if (sessionStorage.getItem('mux-bypass') === 'true') {
+    // Provide a way to turn it back on from the classic UI
+    const enableUxBtn = document.createElement("button");
+    enableUxBtn.textContent = "Activar Moodle UX";
+    enableUxBtn.style = "position: fixed; bottom: 20px; left: 20px; z-index: 99999; padding: 10px 20px; background: #4f46e5; color: white; border-radius: 20px; border: none; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: sans-serif;";
+    enableUxBtn.onclick = () => {
+      sessionStorage.removeItem('mux-bypass');
+      window.location.reload();
+    };
+    if (document.body) {
+      document.body.appendChild(enableUxBtn);
+    } else {
+      window.addEventListener('DOMContentLoaded', () => document.body.appendChild(enableUxBtn));
+    }
+    return; // Stop execution of the UX injection
+  }
+
   // Create a button to trigger the injection
   var sessionObject = {};
 

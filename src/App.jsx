@@ -5,8 +5,9 @@ import DashboardView from "./components/DashboardView";
 import ClassView from "./components/ClassView";
 import BookReader from "./components/BookReader";
 import { fetchCourseDetails, fetchBookContentHTML } from "./api/moodle";
-import { Logo, Sidebar } from "./components/ui"; // Assuming you split these out
-import { Menu, X } from "lucide-react";
+import { processZoomRecording } from "./api/zoomProcessor";
+import { Logo, Sidebar, BackToMoodleButton } from "./components/ui"; // Assuming you split these out
+import { Menu, X, Sparkles } from "lucide-react";
 
 import { dbService } from "./db/service";
 
@@ -22,6 +23,9 @@ const App = () => {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [bookContent, setBookContent] = useState(null);
   const [uiLoading, setUiLoading] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null);
+  const [syncProgress, setSyncProgress] = useState(null); // { current: number, total: number }
+  const [globalSyncing, setGlobalSyncing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleBookClick = useCallback(async (bookId) => {
@@ -40,15 +44,94 @@ const App = () => {
   // 3. Handlers
   const handleSyncAll = useCallback(async () => {
     if (!session.key) return;
-    setUiLoading(true);
+    
+    // Switch to non-blocking background mode
+    setGlobalSyncing(true);
+    setSyncStatus("Iniciando sincronización global...");
+    
+    let stats = { courses: 0, books: 0, zoomSuccess: 0, zoomFailed: 0 };
+    
     try {
-      await dbService.syncAll(session.url, session.key, fetchCourseDetails);
-      alert("All courses synced successfully!");
+      const dbCourses = await dbService.getCoursesCollection().query().fetch();
+      setSyncProgress({ current: 0, total: dbCourses.length });
+      
+      for (let i = 0; i < dbCourses.length; i++) {
+        const course = dbCourses[i];
+        setSyncProgress({ current: i + 1, total: dbCourses.length });
+        setSyncStatus(`Sincronizando materia: ${course.fullname}`);
+        const details = await fetchCourseDetails(session.url, session.key, course.id);
+        
+        stats.courses++;
+        
+        // Caching course tree
+        await dbService.saveFullCourseData(course.id, details);
+
+        console.log(`[SYNC DEBUG] Course ${course.id}: "${course.fullname}"`);
+        if (details.cm) {
+          console.log(`[SYNC DEBUG] -> has ${details.cm.length} modules to scan.`);
+          for (const mod of details.cm) {
+            console.log(`[SYNC DEBUG]   -> Module: "${mod.name}" | Type: "${mod.modname}"`);
+            
+            const modLower = mod.modname?.toLowerCase() || '';
+            const isBook = modLower.includes('book') || modLower.includes('libro');
+            const isZoom = modLower.includes('zoom') || modLower.includes('clase en vivo');
+            
+            if (isBook) {
+              setSyncStatus(`Descargando Libro: ${mod.name}`);
+              try {
+                // Fetch the HTML and strip it to save pure text for the full-text search engine
+                const bookHtml = await fetchBookContentHTML(session.url, mod.id);
+                if (bookHtml) {
+                  const plainText = bookHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                                            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                                            .replace(/<[^>]+>/g, ' ')
+                                            .replace(/\s{2,}/g, ' ')
+                                            .trim();
+                  await dbService.updateResourceContent(mod.id, plainText);
+                  stats.books++;
+                }
+              } catch (e) {
+                console.error(`Error fetching book ${mod.id}`, e);
+              }
+            } else if (isZoom) {
+              setSyncStatus(`Descargando Grabación: ${mod.name}`);
+              try {
+                // Wait for the entire transcribing process sequentially to not fry the GPU
+                const result = await processZoomRecording(
+                  session.url, 
+                  mod.id, 
+                  course.fullname, 
+                  mod.name, 
+                  (status) => {
+                    setSyncStatus(`Grabación ${mod.name}: ${status}`);
+                  }
+                );
+                
+                // If we successfully received the transcribed VTT text, save it to the DB for full-text search
+                if (result && result.success && result.text) {
+                  await dbService.updateResourceContent(mod.id, result.text, result.videoUrl, result.vttUrl);
+                  stats.zoomSuccess++;
+                } else {
+                  stats.zoomFailed++;
+                  // pause 2 seconds so the user can read the error message on screen
+                  await new Promise(r => setTimeout(r, 2000));
+                }
+              } catch (e) {
+                console.error(`Error processing zoom ${mod.id}`, e);
+                stats.zoomFailed++;
+              }
+            }
+          }
+        }
+      }
+      alert(`¡Sincronización finalizada!\n\nMaterias revisadas: ${stats.courses}\nLibros descargados: ${stats.books}\nGrabaciones procesadas con éxito: ${stats.zoomSuccess}\nGrabaciones fallidas: ${stats.zoomFailed}`);
     } catch (e) {
       console.error(e);
-      alert("Sync failed. Check console.");
+      alert("La sincronización falló. Revisar consola.");
     } finally {
-      setUiLoading(false);
+      setSyncStatus(null);
+      setSyncProgress(null);
+      setGlobalSyncing(false);
     }
   }, [session]);
 
@@ -102,8 +185,19 @@ const App = () => {
         <main className="col-span-1 lg:col-span-8 p-6 lg:p-12 pb-32">
 
           {uiLoading && (
-            <div className="flex h-full items-center justify-center">
-              <span className="loading loading-spinner loading-lg text-stone-400"></span>
+            <div className="flex flex-col h-full items-center justify-center gap-6 animate-in fade-in duration-300">
+              <div className="relative">
+                <div className="absolute inset-0 bg-indigo-200 rounded-full blur-xl opacity-50 animate-pulse"></div>
+                <div className="w-20 h-20 bg-white rounded-2xl shadow-xl flex items-center justify-center relative z-10 border border-indigo-50">
+                   <span className="loading loading-spinner text-indigo-600 w-8 h-8"></span>
+                </div>
+                <div className="absolute -top-2 -right-2 text-indigo-400 rotate-12">
+                   <Sparkles className="w-5 h-5 animate-pulse" />
+                </div>
+              </div>
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-stone-800">Cargando Moodle UX...</h3>
+              </div>
             </div>
           )}
 
@@ -119,6 +213,7 @@ const App = () => {
 
           {!uiLoading && currentView === VIEWS.CLASS && selectedCourse && (
             <ClassView
+              session={session}
               onNavigate={setCurrentView}
               currentCourse={selectedCourse}
               onBack={() => setCurrentView(VIEWS.DASHBOARD)}
@@ -132,6 +227,11 @@ const App = () => {
               endpoint={session.url}
               onBack={() => setCurrentView(VIEWS.CLASS)}
             />
+          )}
+
+          {/* Give the dashboard a back button too, leading to normal moodle root */}
+          {!uiLoading && currentView === VIEWS.DASHBOARD && (
+            <BackToMoodleButton targetUrl={`${session?.url || ''}/my/index.php`} />
           )}
         </main>
 

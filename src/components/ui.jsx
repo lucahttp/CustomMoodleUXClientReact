@@ -8,6 +8,8 @@ import {
   Headphones,
   MessagesSquare,
   Bug,
+  LogOut,
+  Box
 } from "lucide-react";
 
 // Utility for color mapping
@@ -174,7 +176,7 @@ export const FilterPill = memo(({ icon: Icon, label, active }) => (
 ));
 
 // Resource Row Card Component
-export const ResourceRowCard = memo(({ title, color, type, onClick }) => {
+export const ResourceRowCard = memo(({ title, color, type, onClick, children }) => {
   const getResourceType = (moduleName) => {
     const moduleMap = {
       // Activity types - tareas, quizzes, foros
@@ -188,6 +190,7 @@ export const ResourceRowCard = memo(({ title, color, type, onClick }) => {
       // Folder/Content types - books, files, labels, resources, urls
       book: "folder",
       folder: "folder",
+      resource: "folder",
       url: "everythingelse",
       label: "folder",
     };
@@ -214,7 +217,12 @@ export const ResourceRowCard = memo(({ title, color, type, onClick }) => {
       <div className="opacity-50">
         <Icon size={24} />
       </div>
-      <span className="font-medium text-stone-800 text-lg">{title}</span>
+      <span className="font-medium text-stone-800 text-lg flex-1">{title}</span>
+      {children && (
+        <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
+          {children}
+        </div>
+      )}
     </div>
   );
 });
@@ -237,3 +245,41 @@ export const ModuleContentBlock = memo(() => (
     <p>La importancia de las referencias</p>
   </div>
 ));
+
+export const getTabCategoryForModule = (moduleName) => {
+  const modLower = moduleName?.toLowerCase() || '';
+  if (modLower.includes('assign') || modLower.includes('tarea')) return { label: "Tareas", icon: FileEdit };
+  if (modLower.includes('quiz') || modLower.includes('cuestionario')) return { label: "Tareas", icon: FileEdit };
+  if (modLower.includes('forum') || modLower.includes('foro')) return { label: "Foros", icon: MessagesSquare };
+  if (modLower.includes('zoom') || modLower.includes('clase en vivo')) return { label: "Clase Virtual", icon: Headphones };
+  if (modLower.includes('book') || modLower.includes('libro')) return { label: "Material", icon: BookOpen };
+  if (modLower.includes('folder') || modLower.includes('carpeta')) return { label: "Material", icon: Folder };
+  if (modLower.includes('resource') || modLower.includes('recurso')) return { label: "Material", icon: Folder };
+  if (modLower.includes('url') || modLower.includes('link')) return { label: "Links", icon: Bug };
+  if (modLower.includes('label') || modLower.includes('texto y medios')) return { label: "Material", icon: Folder };
+  
+  return { label: "Otros", icon: Box };
+};
+
+// Button to turn off the UI and return to classic Moodle
+export const BackToMoodleButton = memo(({ targetUrl }) => {
+  const handleBypass = () => {
+    sessionStorage.setItem('mux-bypass', 'true');
+    if (targetUrl) {
+      window.location.href = targetUrl;
+    } else {
+      window.location.reload();
+    }
+  };
+
+  return (
+    <button
+      onClick={handleBypass}
+      className="fixed bottom-6 left-6 z-50 bg-stone-900 text-white px-4 py-3 rounded-2xl shadow-lg hover:bg-stone-800 transition-all flex items-center gap-2 group"
+      title="Salir de Moodle UX y volver a la vista clásica"
+    >
+      <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
+      <span className="text-sm font-medium">Volver a Moodle Clásico</span>
+    </button>
+  );
+});

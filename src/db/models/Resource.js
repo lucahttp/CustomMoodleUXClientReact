@@ -8,6 +8,8 @@ export default class Resource extends Model {
   @text('type') type
   @text('url') url
   @text('content') content
+  @text('video_url') videoUrl
+  @text('vtt_url') vttUrl
   @text('section_name') sectionName
   
   @relation('courses', 'course_id') course

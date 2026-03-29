@@ -22,6 +22,8 @@ export default appSchema({
         { name: 'type', type: 'string' }, // 'url', 'resource', 'book', etc.
         { name: 'url', type: 'string', isOptional: true },
         { name: 'content', type: 'string', isOptional: true }, // Cached HTML content
+        { name: 'video_url', type: 'string', isOptional: true }, // Minio MP4 URL
+        { name: 'vtt_url', type: 'string', isOptional: true }, // Minio VTT URL
         { name: 'section_name', type: 'string', isOptional: true },
       ]
     }),

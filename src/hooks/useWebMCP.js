@@ -9,6 +9,7 @@ import {
   fetchForumDiscussions,
   fetchGrades,
 } from "../api/moodle";
+import { processZoomRecording } from "../api/zoomProcessor";
 
 /**
  * useWebMCP — Registers Moodle tools into navigator.modelContext (WebMCP).
@@ -255,13 +256,49 @@ export const useWebMCP = ({ courses, session, handleCourseClick, handleSyncAll, 
       }
     });
 
+    // ─────────────────────────────────────────────────────────────
+    // 11. process_zoom_recording — Download, Minio, Transcribe
+    // ─────────────────────────────────────────────────────────────
+    mc.registerTool({
+      name: "process_zoom_recording",
+      description: "Process a Zoom class recording. It downloads the video, uploads it to Minio, transcribes it to VTT format using Vibe API, and uploads the `.vtt` file to Minio. Useful for generating automated lecture notes.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          courseId: { type: "string", description: "The course ID to which this resource belongs." },
+          resourceId: { type: "string", description: "The resource ID (cmid) of the Zoom class (module type 'zoomutnba')." },
+          resourceName: { type: "string", description: "The name of the class or resource for the filename." }
+        },
+        required: ["courseId", "resourceId"]
+      },
+      execute: async ({ courseId, resourceId, resourceName }) => {
+        const course = courses.find(c => c.id == courseId);
+        const courseName = course ? (course.shortname || course.fullname) : 'uncategorized';
+
+        const result = await processZoomRecording(session.url, resourceId, courseName, resourceName || `zoom-${resourceId}`, (status) => {
+          console.log(`[process_zoom_recording] Status: ${status}`);
+        });
+        
+        if (result.success) {
+          return {
+            content: [{
+              type: "text", 
+              text: `Success! \nVideo uploaded to Minio: ${result.videoUrl} \nVTT Uploaded to Minio: ${result.vttUrl} \n\nTranscription:\n${result.text}`
+            }]
+          };
+        } else {
+          throw new Error(`Zoom processing failed: ${result.error}`);
+        }
+      }
+    });
+
     // Cleanup
     return () => {
       [
         "list_courses", "get_course_content", "read_book",
         "list_assignments", "get_assignment_details", "submit_assignment",
         "get_quiz_questions", "get_grades", "list_forums",
-        "open_course", "search_moodle", "sync_all_courses"
+        "open_course", "search_moodle", "sync_all_courses", "process_zoom_recording"
       ].forEach(name => mc.unregisterTool(name));
     };
   }, [courses, session, handleCourseClick, handleSyncAll, dbService]);
