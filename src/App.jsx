@@ -109,6 +109,7 @@ const App = () => {
 
           {!uiLoading && currentView === VIEWS.DASHBOARD && (
             <DashboardView
+              session={session}
               courses={courses}
               loading={loading}
               onCourseClick={handleCourseClick}

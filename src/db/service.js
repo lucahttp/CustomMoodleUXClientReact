@@ -105,18 +105,35 @@ export const dbService = {
   // --- Search ---
 
   async search(text) {
-    // Simple search implementation
+    if (!text || text.trim() === '') {
+      return { courses: [], resources: [] };
+    }
+
+    const tokens = text.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+
+    // Creates an array of Q.or conditions for each token
+    // For courses: token matches 'fullname', 'shortname', or 'summary'
+    const courseConditions = tokens.map(token => 
+      Q.or(
+        Q.where('fullname', Q.like(`%${token}%`)),
+        Q.where('shortname', Q.like(`%${token}%`)),
+        Q.where('summary', Q.like(`%${token}%`))
+      )
+    );
+
+    // Creates an array of Q.where conditions for resources
+    const resourceConditions = tokens.map(token =>
+      Q.where('name', Q.like(`%${token}%`))
+    );
+
     // 1. Search Courses
     const courses = await database.collections.get('courses').query(
-      Q.or(
-        Q.where('fullname', Q.like(`%${text}%`)),
-        Q.where('shortname', Q.like(`%${text}%`))
-      )
+      Q.and(...courseConditions)
     ).fetch();
 
     // 2. Search Resources
     const resources = await database.collections.get('resources').query(
-      Q.where('name', Q.like(`%${text}%`))
+      Q.and(...resourceConditions)
     ).fetch();
 
     return { courses, resources };

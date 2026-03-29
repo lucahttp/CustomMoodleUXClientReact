@@ -21,13 +21,64 @@
 (() => {
   // Create a button to trigger the injection
   var sessionObject = {};
+
+  // Inject spinner styles and sleek button styles
+  const styleStr = document.createElement("style");
+  styleStr.textContent = `
+    @keyframes mux-spin {
+      100% { transform: rotate(360deg); }
+    }
+    .mux-btn {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      z-index: 10000;
+      padding: 12px 24px;
+      background-color: #6c757d;
+      color: #ffffff;
+      border: none;
+      border-radius: 50px;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      cursor: not-allowed;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      opacity: 0.9;
+    }
+    .mux-btn.mux-btn-ready {
+      background-color: #4f46e5;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3);
+      opacity: 1;
+    }
+    .mux-btn.mux-btn-ready:hover {
+      background-color: #4338ca;
+      transform: translateY(-2px);
+    }
+  `;
   const injectButton = document.createElement("button");
-  injectButton.textContent = "Inject Code";
-  injectButton.style.position = "fixed";
-  injectButton.style.top = "20px";
-  injectButton.style.left = "20px";
-  injectButton.style.zIndex = "10000"; // Ensure it's on top
-  document.body.prepend(injectButton);
+  injectButton.className = "mux-btn";
+  injectButton.disabled = true;
+  injectButton.innerHTML = `
+    <svg viewBox="0 0 50 50" style="width: 20px; height: 20px; animation: mux-spin 1s linear infinite;">
+      <circle cx="25" cy="25" r="20" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-dasharray="90, 150" style="stroke-dashoffset: 0;"></circle>
+    </svg>
+    <span>Loading Moodle UX...</span>
+  `;
+
+  const injectStylesAndButton = () => {
+    if (document.head && document.body) {
+      document.head.appendChild(styleStr);
+      document.body.prepend(injectButton);
+    } else {
+      setTimeout(injectStylesAndButton, 50);
+    }
+  };
+  injectStylesAndButton();
 
   const codeToInject = async () => {
     document.body.innerHTML = ""; // Remove all existing body content
@@ -112,6 +163,23 @@
       sessionObject = e.detail;
       console.log("sessionObject:", sessionObject);
 
+      // Update button state visually to show it's ready
+      if (injectButton) {
+        injectButton.disabled = false;
+        injectButton.classList.add("mux-btn-ready");
+        injectButton.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+            <path d="M5 12l5 5L20 7"></path>
+          </svg>
+          <span>Launch Moodle UX</span>
+        `;
+      }
+
+      // Automatically run code injection right after a small delay
+      // so the user can actually see the button change state before the screen is wiped.
+      /*setTimeout(() => {
+        codeToInject();
+      }, 1500);*/
     });
 
     // Inyectamos el script para obtener el sessionKey desde el contexto de la página

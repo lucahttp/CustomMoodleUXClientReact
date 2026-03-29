@@ -51,6 +51,20 @@ export const fetchAssignments = async (endpoint, sessionKey, courseId) => {
   return data[0]?.data?.courses?.[0]?.assignments ?? [];
 };
 
+/** Fetch upcoming actionable tasks (like unsubmitted assignments) */
+export const fetchUpcomingTasks = async (endpoint, sessionKey) => {
+  const data = await moodlePost(endpoint, sessionKey, [{
+    index: 0,
+    methodname: "core_calendar_get_action_events_by_timesort",
+    args: {
+      timesortfrom: Math.floor(Date.now() / 1000), // from now
+      limitnum: 15 // next 15 actionable items
+    },
+  }]);
+  if (data[0]?.error) throw new Error(data[0].error.message);
+  return data[0]?.data?.events ?? [];
+};
+
 /** Fetch assignment submission status and instructions */
 export const fetchAssignmentDetails = async (endpoint, sessionKey, assignId) => {
   const [statusData, infoData] = await Promise.all([
