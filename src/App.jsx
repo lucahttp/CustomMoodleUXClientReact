@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { useMoodle } from "./hooks/useMoodle";
 import { useWebMCP } from "./hooks/useWebMCP";
+import { useHandoff } from "./hooks/useHandoff";
 import DashboardView from "./components/DashboardView";
 import ClassView from "./components/ClassView";
 import BookReader from "./components/BookReader";
@@ -288,16 +289,11 @@ const App = () => {
     }
   }, [session, courses]);
 
-  // 4. WebMCP Integration
-  useWebMCP({
-    courses,
-    session,
-    handleCourseClick,
-    handleSyncAll,
-    dbService
-  });
+  // 4. MCP Integrations (WebMCP / Handoff)
+  useWebMCP({ courses, session, handleCourseClick, handleSyncAll, dbService });
+  useHandoff({ courses, session, handleCourseClick, handleSyncAll, dbService });
 
-  // 4. Render
+  // 5. Render
   return (
     <div className="min-h-screen bg-[#FEFDF9] text-stone-900 font-sans">
 

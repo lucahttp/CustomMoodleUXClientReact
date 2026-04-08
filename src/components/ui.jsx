@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useState, useEffect } from "react";
 import {
   BookOpen,
   Clock,
@@ -9,7 +9,9 @@ import {
   MessagesSquare,
   Bug,
   LogOut,
-  Box
+  Box,
+  Settings,
+  Server
 } from "lucide-react";
 
 // Utility for color mapping
@@ -109,6 +111,61 @@ export const Sidebar = memo(
         </div>
 
         <div className="flex-grow hidden lg:block"></div>
+
+        <div className="mt-8 bg-white p-4 rounded-2xl shadow-sm border border-stone-200">
+          <div className="flex items-center gap-2 mb-3">
+            <Server size={18} className="text-stone-600" />
+            <h3 className="text-sm font-semibold text-stone-700 uppercase tracking-wider">
+              Conexión MCP
+            </h3>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <label className="flex items-center gap-2 text-sm text-stone-600 cursor-pointer">
+              <input
+                type="radio"
+                name="mcp_mode"
+                value="webmcp"
+                checked={localStorage.getItem('mcp_mode') !== 'handoff'}
+                onChange={() => {
+                  localStorage.setItem('mcp_mode', 'webmcp');
+                  window.location.reload();
+                }}
+                className="accent-stone-800"
+              />
+              WebMCP (Local)
+            </label>
+            <label className="flex items-center gap-2 text-sm text-stone-600 cursor-pointer">
+              <input
+                type="radio"
+                name="mcp_mode"
+                value="handoff"
+                checked={localStorage.getItem('mcp_mode') === 'handoff'}
+                onChange={() => {
+                  localStorage.setItem('mcp_mode', 'handoff');
+                  window.location.reload();
+                }}
+                className="accent-stone-800"
+              />
+              Handoff Server
+            </label>
+
+            {localStorage.getItem('mcp_mode') === 'handoff' && (
+              <div className="mt-1">
+                <input
+                  type="text"
+                  placeholder="http://localhost:8080"
+                  defaultValue={localStorage.getItem('handoff_url') || 'http://localhost:8080'}
+                  onBlur={(e) => {
+                    localStorage.setItem('handoff_url', e.target.value);
+                    window.location.reload();
+                  }}
+                  className="w-full text-xs p-2 rounded-lg border border-stone-300 bg-stone-50 text-stone-700 outline-none focus:border-stone-500"
+                />
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="mt-auto">
           <h3 className="text-stone-500 text-xs font-semibold uppercase tracking-wider mb-4">
