@@ -139,6 +139,33 @@ export const parseBookContent = (htmlString, endpoint) => {
             );
         });
 
+        // **D. Enhanced Google Slides Embeds:** Allow Native PDF Export or Original view
+        chapterEl.querySelectorAll("iframe").forEach((iframe) => {
+             const src = iframe.getAttribute("src") || "";
+             if (src.includes("docs.google.com/presentation/d/")) {
+                 const presentationIdMatch = src.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                 if (presentationIdMatch && presentationIdMatch[1]) {
+                     const presentationId = presentationIdMatch[1];
+                     const pdfExportUrl = `https://docs.google.com/presentation/d/${presentationId}/export/pdf`;
+                     
+                     const overlayUI = `
+                        <div class="moodle-google-slides-wrapper" style="border: 2px dashed #4ade80; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
+                            <div class="slides-toolbar" style="display: flex; gap: 10px; margin-bottom: 10px; justify-content: center;">
+                                <a href="${pdfExportUrl}" target="_blank" style="background: #ef4444; color: white; padding: 8px 16px; border-radius: 50px; text-decoration: none; font-weight: bold; font-family: sans-serif;">Descargar como PDF 📄</a>
+                                <a href="${src}" target="_blank" style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 50px; text-decoration: none; font-weight: bold; font-family: sans-serif;">Abrir Presentación Original 🔗</a>
+                            </div>
+                            <div class="iframe-container" style="position: relative; overflow: hidden; padding-top: 56.25%;">
+                                <iframe src="${src}" frameborder="0" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
+                            </div>
+                        </div>
+                     `;
+                     
+                     iframe.insertAdjacentHTML("afterend", overlayUI);
+                     iframe.remove();
+                 }
+             }
+        });
+
         // 5. Extract the final cleaned content
         const content = chapterEl.innerHTML;
 

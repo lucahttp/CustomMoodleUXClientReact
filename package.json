@@ -24,6 +24,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-frame-component": "5.2.7",
+    "socket.io-client": "^4.8.3",
     "tailwindcss": "^4.1.7",
     "vite-tsconfig-paths": "^3.3.17"
   },

@@ -2,12 +2,14 @@ import { AwsClient } from 'aws4fetch';
 import { ingestZoomRecording } from '../db/pgliteIngest';
 
 // Configure this with your local Minio settings
-const MINIO_URL = 'http://localhost:9001/utn';
-const MINIO_ACCESS_KEY = 'minioadmin';
-const MINIO_SECRET_KEY = 'minioadmin';
+const MINIO_URL = import.meta.env.VITE_RUSTFS_URL || 'http://127.0.0.1:9000';
+const MINIO_ACCESS_KEY = import.meta.env.VITE_RUSTFS_ACCESS_KEY || 'rustfsadmin';
+const MINIO_SECRET_KEY = import.meta.env.VITE_RUSTFS_SECRET_KEY || 'rustfsadmin';
 
 // Vibe API endpoint
-const VIBE_URL = 'http://127.0.0.1:57252/v1/audio/transcriptions';
+const VIBE_URL = import.meta.env.VITE_VIBE_URL || 'http://127.0.0.1:64619/v1/audio/transcriptions';
+
+import { getPgliteInstance } from '../db/pgliteSync';
 
 const aws = new AwsClient({
   accessKeyId: MINIO_ACCESS_KEY,
@@ -152,7 +154,9 @@ export const transcribeWithVibe = async (blob) => {
   return resultText; // Returning the raw VTT string
 };
 
-export const processZoomRecording = async (sessionUrl, courseId, zoomModId, courseName, resourceName, onProgress) => {
+let processingQueue = Promise.resolve();
+
+const performZoomRecordingIngestion = async (sessionUrl, courseId, zoomModId, courseName, resourceName, onProgress) => {
   console.log(`[Zoom Pipeline] --- INITIALIZING para "${resourceName}" (ID: ${zoomModId}) en "${courseName}" ---`);
   try {
     onProgress("Extrayendo URL del video...");
@@ -180,4 +184,27 @@ export const processZoomRecording = async (sessionUrl, courseId, zoomModId, cour
     onProgress(`Error: ${error.message}`);
     return { success: false, error: error.message };
   }
+};
+
+export const processZoomRecording = (sessionUrl, courseId, zoomModId, courseName, resourceName, onProgress) => {
+  return new Promise((resolve, reject) => {
+    processingQueue = processingQueue.then(async () => {
+      try {
+        const db = await getPgliteInstance();
+        
+        // Verificamos si el video ya está indexado
+        const check = await db.query('SELECT 1 FROM recursos WHERE id = $1 LIMIT 1', [String(zoomModId)]);
+        if (check.rows.length > 0) {
+          onProgress("Grabación ya transcrita y en base de datos. Saltando Vibe.");
+          console.log(`[Zoom Pipeline] Salteando ${zoomModId}: ya existe recurso transcrito.`);
+          return resolve({ success: true, message: "Already transcribed", videoUrl: `blob://${zoomModId}`, vttUrl: `blob://${zoomModId}` });
+        }
+
+        const result = await performZoomRecordingIngestion(sessionUrl, courseId, zoomModId, courseName, resourceName, onProgress);
+        resolve(result);
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
 };
