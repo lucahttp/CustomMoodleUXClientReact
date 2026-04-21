@@ -7,12 +7,14 @@ import ClassView from "./components/ClassView";
 import BookReader from "./components/BookReader";
 import { VideoPlayer } from "./components/VideoPlayer";
 import { fetchCourseDetails, fetchBookContentHTML } from "./api/moodle";
-import { processZoomRecording, findVideoInMinio } from "./api/zoomProcessor";
+import { processZoomRecording } from "./api/zoomProcessor";
 import { Logo, Sidebar, BackToMoodleButton } from "./components/ui"; // Assuming you split these out
+import { DownloadTracker } from "./components/DownloadTracker";
 import { Menu, X, Sparkles } from "lucide-react";
 
 import { dbService } from "./db/service";
 import { ingestMoodleBook, ingestZoomRecording } from "./db/pgliteIngest";
+import { enqueueMediaSync } from "./api/handoffProxy";
 
 // View Constants
 const VIEWS = { DASHBOARD: "dashboard", CLASS: "class", BOOK: "book", VIDEO: "video" };
@@ -42,8 +44,22 @@ const App = () => {
     try {
       const isBook = res.modname?.toLowerCase().includes('book') || res.modname?.toLowerCase().includes('libro') || res.module?.toLowerCase().includes('book');
       const isZoom = res.modname?.toLowerCase().includes('zoom') || res.modname?.toLowerCase().includes('clase en vivo') || res.module?.toLowerCase().includes('zoom') || res.type?.includes('zoom');
-      
+      const isFolder = res.module?.toLowerCase() === 'folder';
+
       console.log(`[App] 🔍 identified type: isBook=${isBook}, isZoom=${isZoom}`);
+
+      // ---- ENQUEUE TO RUST OFFLINE BOVEDA ---- //
+      enqueueMediaSync({
+        id: res.id?.toString(),
+        course_id: res.course?.id?.toString() || selectedCourse?.id?.toString() || '0',
+        course_name: selectedCourse?.fullname || 'Unknown Course',
+        resource_type: isBook ? 'book' : (isZoom ? 'video' : res.module),
+        title: res.name,
+        url: res.url || `${session.url}/mod/${res.module}/view.php?id=${res.id}`,
+        session_key: session?.key || ''
+      });
+      // ---------------------------------------- //
+
       const dbRes = await dbService.getResourceById(res.id);
 
       if (isBook) {
@@ -382,6 +398,9 @@ const App = () => {
           setIsOpen={setSidebarOpen}
           currentView={currentView}
         />
+
+        {/* Global Floating Download Tracker */}
+        <DownloadTracker />
 
       </div>
     </div>

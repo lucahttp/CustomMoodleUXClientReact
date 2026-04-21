@@ -1,0 +1,231 @@
+mod db;
+mod sync;
+
+use axum::{routing::get, Json, Router};
+use iced::Center;
+use iced::widget::{Column, button, column, container, text, text_input};
+use iced::Element;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use socketioxide::{
+    extract::{Data, SocketRef},
+    SocketIo,
+};
+use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
+use std::thread;
+use std::time::Duration;
+use tower_http::cors::CorsLayer;
+use utoipa::{OpenApi, ToSchema};
+use utoipa_swagger_ui::SwaggerUi;
+
+lazy_static::lazy_static! {
+    static ref ACTIVE_SOCKET: Arc<RwLock<Option<SocketRef>>> = Arc::new(RwLock::new(None));
+}
+
+#[derive(OpenApi)]
+#[openapi(
+    paths(get_courses, get_course_details),
+    components(schemas(MoodleResponse))
+)]
+struct ApiDoc;
+
+#[derive(Serialize, Deserialize, ToSchema)]
+struct MoodleResponse {
+    success: bool,
+    data: Option<Value>,
+    error: Option<String>,
+}
+
+async fn request_moodle_data(action: &str, id: Option<String>) -> Result<Value, String> {
+    let socket = {
+        let lock = ACTIVE_SOCKET.read().unwrap();
+        lock.clone()
+    };
+
+    if let Some(socket) = socket {
+        let payload = serde_json::json!({
+            "action": action,
+            "id": id
+        });
+        
+        let ack = socket.emit_with_ack::<_, Value>("REQUEST_MOODLE_DATA", payload)
+            .map_err(|e| format!("Emit failed: {}", e))?;
+            
+        let _ = ack; // Suppress unused warning temporarily
+        Ok(serde_json::json!([])) // Fallback meanwhile
+    } else {
+        Err("La extensión Moodle no está conectada.".to_string())
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/moodle/courses",
+    responses(
+        (status = 200, description = "Lista de cursos", body = MoodleResponse)
+    )
+)]
+async fn get_courses() -> Json<MoodleResponse> {
+    match request_moodle_data("courses", None).await {
+        Ok(data) => Json(MoodleResponse { success: true, data: Some(data), error: None }),
+        Err(e) => Json(MoodleResponse { success: false, data: None, error: Some(e) })
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/moodle/course/{id}",
+    responses(
+        (status = 200, description = "Curso y recursos", body = MoodleResponse)
+    )
+)]
+async fn get_course_details(axum::extract::Path(id): axum::extract::Path<String>) -> Json<MoodleResponse> {
+    match request_moodle_data("course_details", Some(id)).await {
+        Ok(data) => Json(MoodleResponse { success: true, data: Some(data), error: None }),
+        Err(e) => Json(MoodleResponse { success: false, data: None, error: Some(e) })
+    }
+}
+use tower_http::services::ServeDir;
+
+#[utoipa::path(
+    get,
+    path = "/api/media/{id}",
+    responses(
+        (status = 200, description = "Ruta local del medio", body = MoodleResponse)
+    )
+)]
+async fn get_media_url(axum::extract::Path(id): axum::extract::Path<String>) -> Json<MoodleResponse> {
+    // In a real scenario we query db_conn, for now we will assume the frontend fetches it from React's DB 
+    // or we can just send back a success if needed.
+    Json(MoodleResponse { success: true, data: Some(serde_json::json!({"path": format!("/boveda/...")})), error: None })
+}
+
+async fn run_background_server() {
+    println!("[Daemon] Iniciando servidor Axum + Socket.io en segundo plano...");
+
+    // Inicializar SQLite
+    let db_path = PathBuf::from("moodle_boveda.db");
+    let db_conn = db::init_db(&db_path).await.expect("Failed to init SQLite FTS5 database");
+    println!("[Daemon] SQLite Módulo cargado en moodle_boveda.db");
+
+    let base_folder = PathBuf::from("Boveda");
+    let sync_engine = Arc::new(sync::SyncEngine::new(db_conn.clone(), base_folder));
+
+    let (layer, io) = SocketIo::new_layer();
+    
+    let engine_clone = sync_engine.clone();
+    io.ns("/", move |socket: SocketRef| {
+        println!("[Daemon Socket] Moodle Extension connected: {}", socket.id);
+        
+        {
+            let mut lock = ACTIVE_SOCKET.write().unwrap();
+            *lock = Some(socket.clone());
+        }
+        
+        let engine = engine_clone.clone();
+        socket.on("SYNC_DATA", move |socket: SocketRef, Data::<sync::SyncPayload>(data)| {
+            println!("[Daemon] Recibido payload de sync para: {}", data.title);
+            let eng = engine.clone();
+            let socket_clone = socket.clone();
+            tokio::spawn(async move {
+                if let Err(e) = eng.process(data.clone(), Some(socket_clone)).await {
+                    println!("[Daemon ERROR] Falló la descarga o inserción del recurso: {:?}", e);
+                }
+            });
+        });
+        
+        socket.on_disconnect(|socket: SocketRef| {
+            println!("[Daemon Socket] Extension desconectada: {}", socket.id);
+            let mut lock = ACTIVE_SOCKET.write().unwrap();
+            *lock = None;
+        });
+    });
+
+    let app_router = Router::new()
+        .nest_service("/boveda", ServeDir::new("Boveda"))
+        .route("/api/ping", get(|| async { Json(MoodleResponse { success: true, data: None, error: None }) }))
+        .route("/api/media/:id", get(get_media_url))
+        .route("/api/moodle/courses", get(get_courses))
+        .route("/api/moodle/course/:id", get(get_course_details))
+        .merge(SwaggerUi::new("/api-docs").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .layer(layer)
+        .layer(CorsLayer::permissive());
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    println!("[Daemon] Escuchando localmente en http://localhost:3000");
+
+    axum::serve(listener, app_router).await.unwrap();
+}
+
+// ---- ICE APP STATE ----
+#[derive(Default)]
+struct App {
+    search_query: String,
+}
+
+#[derive(Debug, Clone)]
+enum Message {
+    SearchInputChanged(String),
+    SearchSubmitted,
+}
+
+impl App {
+    fn update(&mut self, message: Message) {
+        match message {
+            Message::SearchInputChanged(value) => {
+                self.search_query = value;
+            }
+            Message::SearchSubmitted => {
+                println!("Searching for: {}", self.search_query);
+                // Aquí llamaremos asincrónicamente FTS en el futuro
+            }
+        }
+    }
+
+    fn view(&self) -> Element<Message> {
+        let input = text_input("Buscar videos o recursos descargados...", &self.search_query)
+            .on_input(Message::SearchInputChanged)
+            .on_submit(Message::SearchSubmitted)
+            .padding(15)
+            .size(20);
+
+        let search_btn = button(text("Buscar"))
+            .on_press(Message::SearchSubmitted)
+            .padding(10);
+
+        let content = column![
+            text("Moodle Handoff Local Bóveda").size(40),
+            input,
+            search_btn,
+            text("Ingresá un término para buscar dentro de SQLite FTS...").size(14)
+        ]
+        .spacing(20)
+        .padding(40)
+        .max_width(800.0);
+
+        container(content)
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill)
+            .align_x(Center)
+            .align_y(Center)
+            .into()
+    }
+}
+
+pub fn main() -> iced::Result {
+    // 1. Spawning al Background Server
+    thread::spawn(|| {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .expect("Failed to build tokio runtime");
+
+        rt.block_on(async {
+            run_background_server().await;
+        });
+    });
+
+    // 2. Iniciando la Vista UI
+    iced::run(App::update, App::view)
+}

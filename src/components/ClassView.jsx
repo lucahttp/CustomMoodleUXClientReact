@@ -382,7 +382,7 @@ const ClassView = memo(({ session, onNavigate, currentCourse, courseLoading, onR
                 {/* Section Resources */}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {section.resources.map((resource, index) => (
+                  {section.resources.filter(r => r.module !== 'zoomutnba').map((resource, index) => (
                     <div key={resource.id} className="flex flex-col gap-2">
                       <ResourceRowCard
                         title={resource.name}

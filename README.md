@@ -14,6 +14,20 @@ The extension is available for [Google Chrome](https://chrome.google.com/webstor
 
 
 
+## Arquitectura Handoff Nativa: Rust Desktop Daemon
+
+Como evolución fundamental, el procesamiento y sincronización profunda de descargas ha abandonado la persistencia de sesión por pestañas o NodeJS local, pasando a ser gestionado por un proxy persistente offline en Rust (`pion-handoff-rust`). Funciona interceptando mandatos de Socket.io y despachándolos bajo **dos colas asíncronas separadas garantizando robustez**:
+
+1. **Download Queue (I/O Bound):**
+   Gestiona de manera ultra rápida conexiones concurrentes hacia afuera:
+   - Extrae PDFs y embebidos de Moodle utilizando galletas de la sesión del usuario.
+   - Traciona MP4 nativos desde Zoom AWS Recordings.
+   - Deriva URLs externas a `yt-dlp` vía Thread Spawns, procesando streams rápidamente.
+
+2. **Transcription Queue (CPU Bound):**
+   Aislada del IO, esta cola únicamente carga el índice BM25 (FTS) local e invoca los motores de IA offline.
+   - Ejecuta Whisper nativo (`transcribe-rs`) a nivel CPU/GPU optimizado.
+   - Actualiza la base SQLite `moodle_boveda.db` lista para indexación semántica desde la GUI Local y React.
 
 ![button to inject the code](https://i.imgur.com/2DDN7rl.png)
 

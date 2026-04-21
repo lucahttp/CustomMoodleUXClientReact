@@ -32,16 +32,14 @@ export const VideoPlayer = memo(({ resource, onBack }) => {
     
     async function loadVideo() {
       try {
-        // Si proviene del Sync Local DB:
-        if (resource.videoUrl && String(resource.videoUrl).startsWith('blob://')) {
+        // Si proviene del Sync Local DB o es YouTube con offline mode:
+        if (resource.videoUrl && String(resource.videoUrl).startsWith('local://')) {
           const db = await getPgliteInstance();
           
-          // 1. Obtener MP4 de OPFS
-          const videoFile = await getFileFromOPFS(`zoom-${resource.id}.mp4`);
-          if (videoFile) {
-             setVideoSrc(URL.createObjectURL(videoFile));
-          }
-
+          // Asumimos que el daemon provee la media localmente mediante su proxy
+          // En caso de fallar, recae al player original
+          setVideoSrc(`http://localhost:3000/boveda/assets/${resource.id}.mp4`); 
+          
           // 2. Reconstruir VTT desde los fragmentos FTS indexados para mostrar los subtitulos en Plymouth
           const vttRows = await db.query(`SELECT start_time, text_content FROM transcripciones_video WHERE video_id = $1 ORDER BY start_time ASC`, [String(resource.id)]);
           if (vttRows.rows.length > 0) {
@@ -100,13 +98,16 @@ export const VideoPlayer = memo(({ resource, onBack }) => {
     );
   }
 
+  const isYouTube = videoSrc && (videoSrc.includes('youtube.com') || videoSrc.includes('youtu.be'));
+
   const videoOptions = {
     type: 'video',
     title: resource.name,
     sources: [
       {
         src: videoSrc,
-        type: 'video/mp4',
+        type: isYouTube ? undefined : 'video/mp4',
+        provider: isYouTube ? 'youtube' : undefined,
       },
     ],
     tracks: vttSrc ? [

@@ -185,54 +185,19 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
             //downloadEmbeddedImages(msvg[0]).then((updatedSVG) => {console.log("Updated SVG with embedded images:", updatedSVG);})
 
             console.log(allSVGArray);
-            	/*
-            chrome.tabs.query(
-              { active: true, currentWindow: true },
-              function (tabs) {
-                chrome.tabs.sendMessage(
-                  tabs[0].id,
-                  { type: "sendArray", data: allSVGArray },
-                  function (response) {
-                    console.log("Response from content script:", response);
-                  }
-                );
-              }
-            );
-            */
-           /*
-            chrome.tabs.sendMessage(
-              tabs[0],
-              { type: "sendArray", data: allSVGArray },
-              function (response) {
-                console.log("Response from content script:", response);
-              }
-            );
-            */
-            sendResponse(allSVGArray); // Send the updated SVG string back to the popup
+            chrome.runtime.sendMessage({ type: "SLIDES_EXTRACTED", data: allSVGArray });
 
-
-            // contentScript.js
-            //chrome.runtime.sendMessage(allSVGArray);
-
-            //sendResponse(msvg[0].outerHTML);
-            //const escapeHTMLPolicy = trustedTypes ? trustedTypes.createPolicy("forceInner", { createHTML: (to_escape) => to_escape, }) : { createHTML: (data) => data }; // Fallback if Trusted Types not supported
-
-            // Create a new document to print
-            //const fileForExport = escapeHTMLPolicy.createHTML(allSVGHTML);
-            //console.log(fileForExport);
-            //document.write(fileForExport);
-            //console.log("All slides processed. Preparing for print...");
-
-            //setTimeout(() => window.print(), 1000);
-            console.log("All slides processed. Preparing for print...");
+            console.log("All slides processed.");
           } else if (slideCount === null || currentSlide === null) {
             console.error("Could not determine slide information. Aborting.");
+            chrome.runtime.sendMessage({ type: "SLIDES_ERROR", error: "Could not determine slide information." });
           } else {
             if (triggerNextSlide()) {
               console.log(`Processing slide ${currentSlide} of ${slideCount}`);
-              setTimeout(processSlide, 500); // Increased delay to allow for slide transition
+              setTimeout(processSlide, 750); // Increased delay
             } else {
               console.error("Failed to trigger next slide. Aborting.");
+              chrome.runtime.sendMessage({ type: "SLIDES_ERROR", error: "Failed to trigger next slide." });
             }
           }
         };

@@ -81,62 +81,7 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Estado en memoria de las sesiones handoff (Simulado)
-const activeSessions = new Map();
-
-/**
- * @swagger
- * /api/handoff/start:
- *   post:
- *     summary: Inicia una nueva sesión Handoff.
- *     description: Guarda la sesión en PGlite con estado initiating.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               sessionId:
- *                 type: string
- *               browserSignalData:
- *                 type: object
- *     responses:
- *       200:
- *         description: Sesión iniciada con éxito.
- */
-app.post('/api/handoff/start', async (req, res) => {
-  const { sessionId, browserSignalData } = req.body;
-  if (!sessionId) return res.status(400).json({ error: "Missing sessionId" });
-
-  console.log(`[Handoff] Iniciando sesión ${sessionId}...`);
-  activeSessions.set(sessionId, { state: 'initiating', startedAt: Date.now() });
-
-  res.json({ success: true, sessionId, message: "Handoff pending negotiation" });
-});
-
-/**
- * @swagger
- * /api/handoff/{sessionId}/status:
- *   get:
- *     summary: Obtiene el estado de una sesión de Handoff activa
- *     parameters:
- *       - in: path
- *         name: sessionId
- *         schema:
- *           type: string
- *         required: true
- *     responses:
- *       200:
- *         description: Estado de la sesión.
- *       404:
- *         description: Sesión no encontrada.
- */
-app.get('/api/handoff/:sessionId/status', (req, res) => {
-  const session = activeSessions.get(req.params.sessionId);
-  if (!session) return res.status(404).json({ error: "Session not found" });
-  res.json(session);
-});
+// Handoff state endpoints were removed based on user request (not used in OPFS architecture)
 
 /**
  * @swagger
@@ -187,6 +132,31 @@ app.get('/api/moodle/courses', async (req, res) => {
         res.json(data);
     } catch(e) {
         res.status(502).json({ error: e.message }); // 502 Bad Gateway
+    }
+});
+
+/**
+ * @swagger
+ * /api/moodle/course/{id}:
+ *   get:
+ *     summary: Extrae detalles de un curso y sus recursos categorizados (books, foros, quizzes, zoom)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Detalles del curso y sus recursos
+ */
+app.get('/api/moodle/course/:id', async (req, res) => {
+    try {
+        const result = await requestMoodleDataFromClient('course_details', { id: req.params.id });
+        res.json(result);
+    } catch (error) {
+        console.error(`Error fetching course ${req.params.id} from client:`, error);
+        res.status(502).json({ error: 'Bad Gateway - Error extrayendo recursos del cliente', details: error.message });
     }
 });
 

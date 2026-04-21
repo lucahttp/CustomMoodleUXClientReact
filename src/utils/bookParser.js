@@ -139,29 +139,75 @@ export const parseBookContent = (htmlString, endpoint) => {
             );
         });
 
-        // **D. Enhanced Google Slides Embeds:** Allow Native PDF Export or Original view
+        // **D. Enhanced Google Slides Embeds via GooGleSlidesToPDF:** Use external API parser when requested
         chapterEl.querySelectorAll("iframe").forEach((iframe) => {
              const src = iframe.getAttribute("src") || "";
              if (src.includes("docs.google.com/presentation/d/")) {
                  const presentationIdMatch = src.match(/\/d\/([a-zA-Z0-9-_]+)/);
                  if (presentationIdMatch && presentationIdMatch[1]) {
                      const presentationId = presentationIdMatch[1];
-                     const pdfExportUrl = `https://docs.google.com/presentation/d/${presentationId}/export/pdf`;
+                     // Fallback variables for GoogleSlides API
+                     const SLIDES_API_URL = import.meta.env.VITE_SLIDES_API || 'http://127.0.0.1:8000';
+                     const pdfExportUrl = `${SLIDES_API_URL}/api/slides/${presentationId}/pdf`;
+                     const svgViewerUrl = `${SLIDES_API_URL}/api/slides/${presentationId}/view`;
+                     const originalGoogle = src;
                      
+                     // Minimal, glassmorphism UI for slides
+                     const slideButtonId = `btn-slide-${presentationId}`;
                      const overlayUI = `
-                        <div class="moodle-google-slides-wrapper" style="border: 2px dashed #4ade80; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
-                            <div class="slides-toolbar" style="display: flex; gap: 10px; margin-bottom: 10px; justify-content: center;">
-                                <a href="${pdfExportUrl}" target="_blank" style="background: #ef4444; color: white; padding: 8px 16px; border-radius: 50px; text-decoration: none; font-weight: bold; font-family: sans-serif;">Descargar como PDF 📄</a>
-                                <a href="${src}" target="_blank" style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 50px; text-decoration: none; font-weight: bold; font-family: sans-serif;">Abrir Presentación Original 🔗</a>
+                        <div class="moodle-google-slides-wrapper" style="border: 1px solid #e5e7eb; background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); padding: 12px; margin-bottom: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);">
+                            <div class="slides-toolbar" style="display: flex; gap: 12px; margin-bottom: 6px; justify-content: center; flex-wrap: wrap;">
+                                <button id="${slideButtonId}" style="cursor: pointer; background: rgba(99, 102, 241, 0.1); color: #4f46e5; padding: 6px 14px; border-radius: 99px; font-weight: 600; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(99, 102, 241, 0.2); transition: all 0.2s;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                    Extraer Presentación
+                                </button>
+                                <a href="${originalGoogle}" target="_blank" style="background: rgba(107, 114, 128, 0.1); color: #4b5563; padding: 6px 14px; border-radius: 99px; text-decoration: none; font-weight: 500; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(107, 114, 128, 0.2);">
+                                    Abir en Google
+                                </a>
                             </div>
-                            <div class="iframe-container" style="position: relative; overflow: hidden; padding-top: 56.25%;">
-                                <iframe src="${src}" frameborder="0" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
-                            </div>
+                            <!-- Slides render space -->
+                            <div id="render-${slideButtonId}" style="display: flex; flex-direction: column; gap: 16px; align-items: center; width: 100%;"></div>
                         </div>
                      `;
                      
                      iframe.insertAdjacentHTML("afterend", overlayUI);
                      iframe.remove();
+
+                     // Add event listener asynchronously because DOM changes asynchronously maybe
+                     setTimeout(() => {
+                         const btn = document.getElementById(slideButtonId);
+                         const renderDiv = document.getElementById(`render-${slideButtonId}`);
+                         if (btn) {
+                             btn.addEventListener('click', (e) => {
+                                 e.preventDefault();
+                                 btn.innerHTML = `<span class="loading loading-spinner loading-xs"></span> Extrayendo...`;
+                                 btn.disabled = true;
+                                 
+                                 // Draw the skeleton
+                                 renderDiv.innerHTML = `
+                                    <div class="w-full flex flex-col gap-4 animate-pulse px-2">
+                                       <div class="w-full aspect-video bg-indigo-100 rounded-xl overflow-hidden relative shadow-sm border border-indigo-50">
+                                            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]"></div>
+                                       </div>
+                                       <div class="w-2/3 h-4 bg-slate-200 rounded-md"></div>
+                                       <div class="w-full aspect-video bg-slate-100 rounded-xl mt-4"></div>
+                                    </div>
+                                 `;
+                                 
+                                 chrome.runtime.sendMessage({ action: "SYNC_GOOGLE_SLIDES", url: originalGoogle }, (response) => {
+                                     btn.innerHTML = "Extracción completa";
+                                     if (response && response.success) {
+                                         // Render all slides
+                                         renderDiv.innerHTML = response.slides.map(svg => `<div style="width: 100%; border: 1px solid #ddd; background: white;">${svg}</div>`).join('');
+                                     } else {
+                                         btn.innerHTML = "Error al extraer";
+                                         btn.style.color = "red";
+                                         renderDiv.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg text-sm">Ocurrió un error al intentar conectarse con el tab background.</div>`;
+                                     }
+                                 });
+                             });
+                         }
+                     }, 100);
                  }
              }
         });

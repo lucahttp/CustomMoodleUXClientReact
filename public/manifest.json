@@ -14,6 +14,9 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "background": {
+    "service_worker": "/assets/js/background.js"
+  },
   "declarative_net_request": {
     "rule_resources": [
       {
