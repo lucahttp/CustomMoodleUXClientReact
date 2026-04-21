@@ -154,36 +154,56 @@ export const parseBookContent = (htmlString, endpoint) => {
                      
                      // Minimal, glassmorphism UI for slides
                      const slideButtonId = `btn-slide-${presentationId}`;
+                     const iframeId = `iframe-slide-${presentationId}`;
+                     
+                     // Attach an ID to the original iframe so we can target it
+                     iframe.id = iframeId;
+                     iframe.style.width = "100%";
+                     iframe.style.height = "100%";
+                     iframe.style.position = "absolute";
+                     iframe.style.top = "0";
+                     iframe.style.left = "0";
+
                      const overlayUI = `
                         <div class="moodle-google-slides-wrapper" style="border: 1px solid #e5e7eb; background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); padding: 12px; margin-bottom: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);">
-                            <div class="slides-toolbar" style="display: flex; gap: 12px; margin-bottom: 6px; justify-content: center; flex-wrap: wrap;">
+                            <div class="slides-toolbar" style="display: flex; gap: 12px; margin-bottom: 12px; justify-content: center; flex-wrap: wrap;">
                                 <button id="${slideButtonId}" style="cursor: pointer; background: rgba(99, 102, 241, 0.1); color: #4f46e5; padding: 6px 14px; border-radius: 99px; font-weight: 600; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(99, 102, 241, 0.2); transition: all 0.2s;">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                    Extraer Presentación
+                                    Extraer a SVG
                                 </button>
-                                <a href="${originalGoogle}" target="_blank" style="background: rgba(107, 114, 128, 0.1); color: #4b5563; padding: 6px 14px; border-radius: 99px; text-decoration: none; font-weight: 500; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(107, 114, 128, 0.2);">
-                                    Abir en Google
-                                </a>
                             </div>
-                            <!-- Slides render space -->
-                            <div id="render-${slideButtonId}" style="display: flex; flex-direction: column; gap: 16px; align-items: center; width: 100%;"></div>
+                            
+                            <!-- The container where the original Iframe will be moved -->
+                            <div id="iframe-container-${slideButtonId}" style="position: relative; overflow: hidden; padding-top: 56.25%; border-radius: 8px; border: 1px solid rgba(0,0,0,0.05); background: #f9fafb;">
+                            </div>
+
+                            <!-- Slides render space (hidden initially) -->
+                            <div id="render-${slideButtonId}" style="display: none; flex-direction: column; gap: 16px; align-items: center; width: 100%; margin-top: 16px;"></div>
                         </div>
                      `;
                      
                      iframe.insertAdjacentHTML("afterend", overlayUI);
-                     iframe.remove();
+                     
+                     // Move the iframe into our clean glass UI container
+                     const iframeContainer = document.getElementById(`iframe-container-${slideButtonId}`);
+                     if (iframeContainer) {
+                         iframeContainer.appendChild(iframe);
+                     }
 
                      // Add event listener asynchronously because DOM changes asynchronously maybe
                      setTimeout(() => {
                          const btn = document.getElementById(slideButtonId);
                          const renderDiv = document.getElementById(`render-${slideButtonId}`);
-                         if (btn) {
+                         const innerFrame = document.getElementById(iframeId);
+                         
+                         if (btn && innerFrame) {
                              btn.addEventListener('click', (e) => {
                                  e.preventDefault();
                                  btn.innerHTML = `<span class="loading loading-spinner loading-xs"></span> Extrayendo...`;
                                  btn.disabled = true;
                                  
                                  // Draw the skeleton
+                                 renderDiv.style.display = "flex";
                                  renderDiv.innerHTML = `
                                     <div class="w-full flex flex-col gap-4 animate-pulse px-2">
                                        <div class="w-full aspect-video bg-indigo-100 rounded-xl overflow-hidden relative shadow-sm border border-indigo-50">
@@ -194,17 +214,26 @@ export const parseBookContent = (htmlString, endpoint) => {
                                     </div>
                                  `;
                                  
-                                 chrome.runtime.sendMessage({ action: "SYNC_GOOGLE_SLIDES", url: originalGoogle }, (response) => {
-                                     btn.innerHTML = "Extracción completa";
-                                     if (response && response.success) {
-                                         // Render all slides
-                                         renderDiv.innerHTML = response.slides.map(svg => `<div style="width: 100%; border: 1px solid #ddd; background: white;">${svg}</div>`).join('');
-                                     } else {
+                                 // Send RPC message into the Iframe where our content-script is injected
+                                 innerFrame.contentWindow.postMessage({ type: "getText" }, "*");
+                                 
+                                 // Listen for the magic extracting results
+                                 const resultListener = (event) => {
+                                     if (event.data && event.data.type === "SLIDES_EXTRACTED") {
+                                         btn.innerHTML = "Extracción completa";
+                                         renderDiv.innerHTML = event.data.data.map(svg => `<div style="width: 100%; border: 1px solid #ddd; background: white; border-radius: 8px; overflow: hidden; margin-bottom: 8px;">${svg}</div>`).join('');
+                                         // Hide the original iframe since we now have native beautiful SVGs
+                                         iframeContainer.style.display = 'none';
+                                         window.removeEventListener("message", resultListener);
+                                     } else if (event.data && event.data.type === "SLIDES_ERROR") {
                                          btn.innerHTML = "Error al extraer";
                                          btn.style.color = "red";
-                                         renderDiv.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg text-sm">Ocurrió un error al intentar conectarse con el tab background.</div>`;
+                                         renderDiv.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg text-sm">Error conectando al Iframe extractor: ${event.data.error || 'Desconocido'}</div>`;
+                                         window.removeEventListener("message", resultListener);
                                      }
-                                 });
+                                 };
+                                 
+                                 window.addEventListener("message", resultListener);
                              });
                          }
                      }, 100);

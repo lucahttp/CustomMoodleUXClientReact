@@ -1,14 +1,15 @@
 import React, { memo, useEffect, useState, useRef } from 'react';
 import { Plyr } from 'plyr-react';
 import 'plyr/dist/plyr.css';
-import { ArrowLeft, Clock } from 'lucide-react';
-import { getFileFromOPFS } from '../db/opfs';
+import { ArrowLeft, Clock, Download } from 'lucide-react';
 import { getPgliteInstance } from '../db/pgliteSync';
+import { processZoomRecording } from '../api/zoomProcessor';
 
 export const VideoPlayer = memo(({ resource, onBack }) => {
   const [videoSrc, setVideoSrc] = useState(null);
   const [vttSrc, setVttSrc] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [downloadStatus, setDownloadStatus] = useState(null); // null | string message
   const playerRef = useRef(null);
 
   // Helper to convert HH:MM:SS.mmm to seconds
@@ -32,32 +33,75 @@ export const VideoPlayer = memo(({ resource, onBack }) => {
     
     async function loadVideo() {
       try {
-        // Si proviene del Sync Local DB o es YouTube con offline mode:
-        if (resource.videoUrl && String(resource.videoUrl).startsWith('local://')) {
-          const db = await getPgliteInstance();
-          
-          // Asumimos que el daemon provee la media localmente mediante su proxy
-          // En caso de fallar, recae al player original
-          setVideoSrc(`http://localhost:3000/boveda/assets/${resource.id}.mp4`); 
-          
-          // 2. Reconstruir VTT desde los fragmentos FTS indexados para mostrar los subtitulos en Plymouth
-          const vttRows = await db.query(`SELECT start_time, text_content FROM transcripciones_video WHERE video_id = $1 ORDER BY start_time ASC`, [String(resource.id)]);
-          if (vttRows.rows.length > 0) {
-              let vttText = "WEBVTT\n\n";
-              for (let i = 0; i < vttRows.rows.length; i++) {
-                  const row = vttRows.rows[i];
-                  // Si no hay end_time (por chunking lazy), usamos el start_time del siguiente fragmento o 1 hora mas para el ultimo
-                  const nextRow = vttRows.rows[i+1];
-                  let endTime = nextRow ? nextRow.start_time : "99:59:59.999";
-                  
-                  vttText += `${row.start_time} --> ${endTime}\n${row.text_content}\n\n`;
-              }
-              const vttBlob = new Blob([vttText], { type: 'text/vtt' });
-              setVttSrc(URL.createObjectURL(vttBlob));
-          }
-        } else {
+        // Case 1: Video already has a direct URL (YouTube, remote, etc.)
+        if (resource.videoUrl && !String(resource.videoUrl).startsWith('local://')) {
           setVideoSrc(resource.videoUrl);
-          setVttSrc(resource.vttUrl);
+          setVttSrc(resource.vttUrl || null);
+          return;
+        }
+
+        // Case 2: Video referenced as local:// — check daemon, then download if needed
+        // First try daemon (file already saved to Boveda/)
+        let daemonUrl = null;
+        try {
+          const res = await fetch(`http://localhost:3000/api/media/${resource.id}`);
+          const json = await res.json();
+          if (json.success && json.data?.url) {
+            console.log(`[VideoPlayer] ✅ Local Bóveda URL: ${json.data.url}`);
+            daemonUrl = json.data.url;
+          }
+        } catch (_) {
+          console.warn('[VideoPlayer] Daemon not reachable, will try download');
+        }
+
+        if (daemonUrl) {
+          setVideoSrc(daemonUrl);
+        } else {
+          // Not in Boveda yet — trigger download via extension
+          setLoading(false);
+          setDownloadStatus('🔍 Buscando grabación en Moodle...');
+          const result = await processZoomRecording(
+            resource.sessionUrl || window.__MOODLE_SESSION_URL__ || '',
+            resource.course?.id || '0',
+            resource.id,
+            resource.course?.fullname || 'Unknown',
+            resource.name,
+            (msg) => setDownloadStatus(msg)
+          );
+          if (result.success) {
+            // Re-check daemon for the URL now that it was ingested
+            try {
+              const res2 = await fetch(`http://localhost:3000/api/media/${resource.id}`);
+              const json2 = await res2.json();
+              if (json2.success && json2.data?.url) {
+                setVideoSrc(json2.data.url);
+                setDownloadStatus(null);
+                setLoading(false);
+              }
+            } catch (_) {}
+          } else {
+            setDownloadStatus(`❌ ${result.error || 'Error descargando el video.'}`);
+          }
+          return;
+        }
+
+        // Reconstruct VTT from PGlite FTS chunks for captions
+        const db = await getPgliteInstance();
+        const vttRows = await db.query(
+          `SELECT start_time, text_content FROM transcripciones_video WHERE video_id = $1 ORDER BY start_time ASC`,
+          [String(resource.id)]
+        );
+        if (vttRows.rows.length > 0) {
+          let vttText = "WEBVTT\n\n";
+          for (let i = 0; i < vttRows.rows.length; i++) {
+            const row = vttRows.rows[i];
+            const nextRow = vttRows.rows[i + 1];
+            const endTime = nextRow ? nextRow.start_time : "99:59:59.999";
+            vttText += `${row.start_time} --> ${endTime}\n${row.text_content}\n\n`;
+          }
+          const vttBlob = new Blob([vttText], { type: 'text/vtt' });
+          setVttSrc(URL.createObjectURL(vttBlob));
+          console.log(`[VideoPlayer] 📄 VTT rebuilt from ${vttRows.rows.length} PGlite chunks.`);
         }
       } catch (e) {
         console.error(`[VideoPlayer] ❌ Error loading video:`, e);
@@ -91,9 +135,28 @@ export const VideoPlayer = memo(({ resource, onBack }) => {
 
   if (loading) {
     return (
-      <div className="flex flex-col h-screen bg-stone-950 text-stone-100 items-center justify-center">
-        <span className="loading loading-spinner loading-lg text-indigo-400"></span>
-        <p className="mt-4 text-stone-400">Cargando video...</p>
+      <div className="flex flex-col h-screen bg-stone-950 text-stone-100 items-center justify-center gap-4">
+        <div className="w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+        <p className="text-stone-400 text-sm">Cargando video...</p>
+      </div>
+    );
+  }
+
+  // Show download progress if video is being fetched for the first time
+  if (downloadStatus) {
+    return (
+      <div className="flex flex-col h-screen bg-stone-950 text-stone-100 items-center justify-center gap-6 px-8">
+        <div className="flex flex-col items-center gap-4 max-w-md text-center">
+          <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
+            <Download className="w-8 h-8 text-indigo-400" />
+          </div>
+          <h2 className="text-lg font-semibold text-white">{resource.name}</h2>
+          <div className="w-full bg-stone-800 rounded-full h-1.5">
+            <div className="bg-indigo-500 h-1.5 rounded-full animate-pulse w-2/3" />
+          </div>
+          <p className="text-stone-400 text-sm font-mono">{downloadStatus}</p>
+          <p className="text-stone-600 text-xs">El video se guardará localmente para reproducción futura sin descarga.</p>
+        </div>
       </div>
     );
   }

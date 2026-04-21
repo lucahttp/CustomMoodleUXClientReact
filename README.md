@@ -16,18 +16,19 @@ The extension is available for [Google Chrome](https://chrome.google.com/webstor
 
 ## Arquitectura Handoff Nativa: Rust Desktop Daemon
 
-Como evolución fundamental, el procesamiento y sincronización profunda de descargas ha abandonado la persistencia de sesión por pestañas o NodeJS local, pasando a ser gestionado por un proxy persistente offline en Rust (`pion-handoff-rust`). Funciona interceptando mandatos de Socket.io y despachándolos bajo **dos colas asíncronas separadas garantizando robustez**:
+El procesamiento y sincronización profunda de descargas es gestionado por un daemon persistente offline en Rust (`pion-handoff-rust`). La extensión Chrome se conecta al daemon vía **Socket.io** y despacha recursos bajo **dos colas asíncronas separadas**:
 
 1. **Download Queue (I/O Bound):**
-   Gestiona de manera ultra rápida conexiones concurrentes hacia afuera:
-   - Extrae PDFs y embebidos de Moodle utilizando galletas de la sesión del usuario.
-   - Traciona MP4 nativos desde Zoom AWS Recordings.
-   - Deriva URLs externas a `yt-dlp` vía Thread Spawns, procesando streams rápidamente.
+   - Descarga videos de YouTube vía `yt-dlp` (Thread Spawns).
+   - Recibe contenido enviado por la extensión Chrome (que sí tiene las cookies de sesión Moodle).
+   - Almacena archivos en la `Boveda/` local, organizada jerárquicamente por curso y tipo.
 
 2. **Transcription Queue (CPU Bound):**
-   Aislada del IO, esta cola únicamente carga el índice BM25 (FTS) local e invoca los motores de IA offline.
-   - Ejecuta Whisper nativo (`transcribe-rs`) a nivel CPU/GPU optimizado.
-   - Actualiza la base SQLite `moodle_boveda.db` lista para indexación semántica desde la GUI Local y React.
+   Aislada del IO, esta cola invoca motores de IA offline:
+   - Ejecuta Whisper nativo (`transcribe-rs`) a nivel CPU/GPU.
+   - Actualiza la base SQLite FTS5 (`moodle_boveda.db`) con índices BM25 para búsqueda full-text.
+
+> **Nota:** El daemon Rust **no puede** descargar recursos autenticados de Moodle directamente (cookies HttpOnly). La extensión Chrome — que sí posee la sesión activa — es la responsable de hacer el `fetch()` y enviar los bytes al daemon.
 
 ![button to inject the code](https://i.imgur.com/2DDN7rl.png)
 

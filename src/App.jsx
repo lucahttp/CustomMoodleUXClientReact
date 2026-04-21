@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { useMoodle } from "./hooks/useMoodle";
 import { useWebMCP } from "./hooks/useWebMCP";
-import { useHandoff } from "./hooks/useHandoff";
+
 import DashboardView from "./components/DashboardView";
 import ClassView from "./components/ClassView";
 import BookReader from "./components/BookReader";
@@ -55,8 +55,7 @@ const App = () => {
         course_name: selectedCourse?.fullname || 'Unknown Course',
         resource_type: isBook ? 'book' : (isZoom ? 'video' : res.module),
         title: res.name,
-        url: res.url || `${session.url}/mod/${res.module}/view.php?id=${res.id}`,
-        session_key: session?.key || ''
+        url: res.url || `${session.url}/mod/${res.module}/view.php?id=${res.id}`
       });
       // ---------------------------------------- //
 
@@ -74,65 +73,17 @@ const App = () => {
         setBookAnchor(startTime); // we reuse startTime param for anchor IDs
         setCurrentView(VIEWS.BOOK);
       } else if (isZoom) {
-        // Support direct videoUrl from resource or from DB
-        const videoUrl = res.videoUrl || dbRes?.videoUrl;
-        const vttUrl = res.vttUrl || dbRes?.vttUrl;
-        
-        console.log(`[App] 🎥 Opening Zoom Player: ${res.id}. URL exists? ${!!videoUrl}`);
-        if (videoUrl) {
-          setVideoResource({ 
-            ...res, 
-            videoUrl: videoUrl, 
-            vttUrl: vttUrl,
-            startTime: startTime // Pass the timestamp here
-          });
-          setCurrentView(VIEWS.VIDEO);
-        } else {
-          try {
-             let cName = selectedCourse?.fullname;
-             if (!cName && res.course?.id) {
-                try {
-                   const c = await dbService.getCoursesCollection().find(res.course.id.toString());
-                   if (c) cName = c.fullname;
-                } catch(e) { }
-             }
-             console.log(`[App] 🕵️ Minio fallback search -> courseName: "${cName}", resource: "${res.name}"`);
-             const foundUrls = await findVideoInMinio(cName, res.name, res.id);
-          
-             if (foundUrls) {
-               console.log(`[App] ✨ Found in Minio Headless! URLs:`, foundUrls);
-               try {
-                  const vttRes = await fetch(foundUrls.vttUrl);
-                  const text = vttRes.ok ? await vttRes.text() : '';
-                  // Ingest direct
-                  await ingestZoomRecording(res.id, res.course?.id || selectedCourse?.id || '0', res.name, null, text, "Auto-indexado remoto localmente");
-                  
-                  setVideoResource({ 
-                    ...res, 
-                    videoUrl: foundUrls.mp4Url, 
-                    vttUrl: foundUrls.vttUrl,
-                    startTime: startTime 
-                  });
-                  setCurrentView(VIEWS.VIDEO);
-               } catch (e) {
-                  console.error(`[App] ❌ Error syncing metadata after Minio hit`, e);
-                  setVideoResource({ 
-                    ...res, 
-                    videoUrl: foundUrls.mp4Url, 
-                    vttUrl: foundUrls.vttUrl,
-                    startTime: startTime
-                  });
-                  setCurrentView(VIEWS.VIDEO);
-               }
-             } else {
-               console.log(`[App] 🚫 Not found in Minio fallback.`);
-               alert('Este video aún no ha sido sincronizado (procesado). Hacé click en el botón de la tarjeta o corré el Download All Content del Inicio.');
-             }
-          } catch(e) {
-             console.error("[App] 🔥 Error minio query", e);
-             alert("Error buscando el video en Minio.");
-          }
-        }
+        console.log(`[App] 🎥 Opening Zoom Player: ${res.id}`);
+        // Always open the player immediately — VideoPlayer handles check/download internally
+        setVideoResource({ 
+          ...res, 
+          videoUrl: `local://${res.id}`,  // signals VideoPlayer to check daemon
+          vttUrl: null,
+          startTime: startTime,
+          sessionUrl: session.url,          // needed for Moodle page fetch in VideoPlayer
+          course: { id: res.course?.id || selectedCourse?.id, fullname: selectedCourse?.fullname }
+        });
+        setCurrentView(VIEWS.VIDEO);
       } else {
         if (res.url) {
            console.log(`[App] 🔗 External link click: ${res.url}`);
@@ -253,14 +204,13 @@ const App = () => {
                 );
                 
                 console.log(`[Sync All] ✅ processZoomRecording result for ${mod.id}:`, result);
-                if (result && result.success && result.text) {
-                  // Ya no invocamos dbService.updateResourceContent aquí, processZoomRecording se encarga nativamente.
+                if (result && result.success) {
                   stats.zoomSuccess++;
-                  addSyncLog(`✅ ¡Grabación procesada con éxito!`);
+                  addSyncLog(`✅ ${result.queued ? 'En cola para transcripción.' : 'Grabación disponible localmente.'}`);
                 } else {
-                  console.warn(`[Sync All] ⚠️ Zoom failed for ${mod.id}:`, result.error || "No video available");
+                  console.warn(`[Sync All] ⚠️ Zoom failed for ${mod.id}:`, result?.error || "No video available");
                   stats.zoomFailed++;
-                  addSyncLog(`⚠️ Grabación fallida/no disponible.`);
+                  addSyncLog(`⚠️ Grabación fallida/no disponible: ${result?.error || ''}`);
                 }
               } catch (e) {
                 console.error(`[Sync All] 🔥 Fatal Error in Zoom Loop for ${mod.id}`, e);
@@ -307,7 +257,7 @@ const App = () => {
 
   // 4. MCP Integrations (WebMCP / Handoff)
   useWebMCP({ courses, session, handleCourseClick, handleSyncAll, dbService });
-  useHandoff({ courses, session, handleCourseClick, handleSyncAll, dbService });
+
 
   // 5. Render
   return (
