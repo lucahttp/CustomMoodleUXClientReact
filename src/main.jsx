@@ -3,9 +3,6 @@ import ReactDOM from 'react-dom/client'
 import './index.css'
 import App from './App'
 import Frame from 'react-frame-component'
-import { initHandoffProxy } from './api/handoffProxy';
-
-initHandoffProxy();
 
 const root = ReactDOM.createRoot(
   document.getElementById('root')

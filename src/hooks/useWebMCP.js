@@ -6,7 +6,7 @@ import { getToolsList, executeTool } from "./mcpTools";
  * Runs inside a react-frame-component iframe, so we use window.top to reach
  * the top-level page where modelContext lives.
  */
-export const useWebMCP = ({ courses, session, handleCourseClick, handleSyncAll, dbService }) => {
+export const useWebMCP = ({ courses, session, handleCourseClick, handleSyncAll }) => {
   useEffect(() => {
     // Check if we are in WebMCP mode
     const mode = localStorage.getItem("mcp_mode");
@@ -18,7 +18,13 @@ export const useWebMCP = ({ courses, session, handleCourseClick, handleSyncAll, 
       return;
     }
 
-    const tools = getToolsList();
+    const hasSession = !!session.key;
+    const tools = getToolsList(hasSession);
+
+    const activateExtension = () => {
+        window.top.dispatchEvent(new CustomEvent("getSessionObject", { detail: null }));
+        window.dispatchEvent(new CustomEvent("getSessionObject", { detail: null }));
+    };
 
     tools.forEach(tool => {
       mc.registerTool({
@@ -26,7 +32,7 @@ export const useWebMCP = ({ courses, session, handleCourseClick, handleSyncAll, 
         description: tool.description,
         inputSchema: tool.inputSchema,
         execute: async (args) => {
-          return executeTool(tool.name, args, { courses, session, handleCourseClick, handleSyncAll, dbService });
+          return executeTool(tool.name, args, { courses, session, handleCourseClick, handleSyncAll, activateExtension });
         }
       });
     });
@@ -35,5 +41,5 @@ export const useWebMCP = ({ courses, session, handleCourseClick, handleSyncAll, 
     return () => {
       tools.forEach(tool => mc.unregisterTool(tool.name));
     };
-  }, [courses, session, handleCourseClick, handleSyncAll, dbService]);
+  }, [courses, session, handleCourseClick, handleSyncAll]);
 };

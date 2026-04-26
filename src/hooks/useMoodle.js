@@ -1,13 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect } from "react";
 import * as api from "../api/moodle";
 import { extractPastelColorFromImage } from "../utils/colors";
-import { dbService } from "../db/service";
-import { useObservable } from "./useObservable";
 
 export const useMoodle = () => {
   const [session, setSession] = useState({ key: "", url: "" });
-  const coursesObservable = useMemo(() => dbService.observeCourses(), []);
-  const courses = useObservable(coursesObservable, []);
+  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -24,13 +21,12 @@ export const useMoodle = () => {
       }
     };
     window.addEventListener("variableValueRetrieved2", handleSessionKey);
-    // Trigger the fetch mechanism from the content script
     console.log(`[useMoodle] 📡 Dispatching getSessionObject to content script...`);
     window.dispatchEvent(new CustomEvent("getSessionObject", { detail: null }));
     return () => window.removeEventListener("variableValueRetrieved2", handleSessionKey);
   }, []);
 
-  // 2. Fetch Courses when Session is ready
+  // 2. Fetch Courses (Offline First via PGlite)
   useEffect(() => {
     if (!session.key) return;
 
@@ -39,26 +35,28 @@ export const useMoodle = () => {
       setLoading(true);
       try {
         const data = await api.fetchCourses(session.url, session.key);
-        console.log(`[useMoodle] 🎓 Received ${data?.courses?.length || 0} courses from Moodle API`);
-        // Save to DB
-        dbService.saveCourses(data.courses);
-        console.log(`[useMoodle] 💾 Saved courses to local WatermelonDB`);
+        const apiCourses = data?.courses || [];
+        console.log(`[useMoodle] 🎓 Received ${apiCourses.length} courses from Moodle API`);
+        
+        // Save to PGlite and process colors
+        for (const c of apiCourses) {
+            if (c.courseimage) {
+               try {
+                  c.color = await extractPastelColorFromImage(c.courseimage);
+               } catch (e) {
+                  console.warn("Failed to extract color for", c.fullname);
+               }
+            }
+        }
 
-        // Process Colors in background
-        data.courses.forEach(async (c) => {
-          if (c.courseimage) {
-            const color = await extractPastelColorFromImage(c.courseimage);
-            await dbService.updateCourseColor(c.id, color);
-          }
-        });
-        /*
-        */
+        setCourses(apiCourses);
       } catch (err) {
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
+
     loadCourses();
   }, [session]);
 

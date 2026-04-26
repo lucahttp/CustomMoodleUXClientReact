@@ -1,36 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { setJobProgressCallback } from '../api/handoffProxy';
-
 export const DownloadTracker = () => {
     const [jobs, setJobs] = useState({});
     const [isOpen, setIsOpen] = useState(false);
 
+    // Handled previously by handoffProxy. To be re-implemented with native fetch tracking.
     useEffect(() => {
-        setJobProgressCallback((data) => {
-            setJobs(prev => {
-                const newJobs = { ...prev };
-                newJobs[data.id] = {
-                    id: data.id,
-                    status: data.status,
-                    progress: data.progress,
-                    updatedAt: Date.now()
-                };
-
-                // Clear out completed jobs after 5 seconds
-                if (data.progress >= 100) {
-                    setTimeout(() => {
-                        setJobs(curr => {
-                            const updated = { ...curr };
-                            delete updated[data.id];
-                            return updated;
-                        });
-                    }, 5000);
-                }
-
-                return newJobs;
-            });
-            setIsOpen(true);
-        });
     }, []);
 
     const activeJobs = Object.values(jobs).sort((a, b) => b.updatedAt - a.updatedAt);

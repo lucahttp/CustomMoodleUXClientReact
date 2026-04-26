@@ -8,7 +8,6 @@ import {
   BackToMoodleButton 
 } from "./ui";
 import { processZoomRecording } from "../api/zoomProcessor";
-import { dbService } from "../db/service";
 import { parseZoomDate, agruparClasesPorFecha, formatearFechaClase } from "../utils/dateUtils";
 
 import {
@@ -65,7 +64,9 @@ const ClassView = memo(({ session, onNavigate, currentCourse, courseLoading, onR
     console.log(`[ClassView] ✅ processZoomRecording returned:`, result);
     if (result.success) {
       // Save to database for persistence
-      await dbService.updateResourceContent(resourceId, result.text, result.videoUrl, result.vttUrl);
+      // Since dbService is removed, we do not update local DB state directly via Watermelon DB anymore
+      // Further updates could be ingested to PGlite if necessary.
+      console.log(`[ClassView] Local DB Update skipped because dbService was removed.`);
       console.log(`[ClassView] 💾 Saved to DB. Now setting state with videoUrl:`, result.videoUrl);
       setZoomStatuses(prev => ({
         ...prev,

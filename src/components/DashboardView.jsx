@@ -26,7 +26,6 @@ import {
   MonitorPlay,
 } from "lucide-react";
 
-import { dbService } from "../db/service";
 import { getPgliteInstance } from "../db/pgliteSync";
 import { makeGlobalSearchQuery } from "../db/queries";
 
@@ -106,12 +105,7 @@ const DashboardView = memo(
                 rank: row.rank
               }));
 
-              // We'll optionally keep course search from old dbService to not break everything while migrating
-              let coursesOld = [];
-              try {
-                const oldRes = await dbService.search(searchTerm);
-                coursesOld = oldRes.courses || [];
-              } catch(e) {}
+              const coursesOld = [];
 
               console.log(`[Dashboard] 🔎 Search results received:`, { courses: coursesOld, resources: resourcesTokens });
               setSearchResults({ courses: coursesOld, resources: resourcesTokens });
