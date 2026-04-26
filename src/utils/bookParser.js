@@ -153,39 +153,37 @@ export const parseBookContent = (htmlString, endpoint) => {
                      const originalGoogle = src;
                      
                      // Minimal, glassmorphism UI for slides
-                     const slideButtonId = `btn-slide-${presentationId}`;
-                     const iframeId = `iframe-slide-${presentationId}`;
-                     
-                     // Attach an ID to the original iframe so we can target it
+                     // Create IDs for coordination
+                     const iframeId = `gslide-iframe-${presentationId}`;
+                     const slideButtonId = `gslide-btn-${presentationId}`;
+                     const renderDivId = `render-${presentationId}`;
+                     const containerId = `iframe-container-${presentationId}`;
+
                      iframe.id = iframeId;
-                     iframe.style.width = "100%";
-                     iframe.style.height = "100%";
-                     iframe.style.position = "absolute";
-                     iframe.style.top = "0";
-                     iframe.style.left = "0";
+                     iframe.classList.add('gslide-iframe');
 
                      const overlayUI = `
                         <div class="moodle-google-slides-wrapper" data-presentation-id="${presentationId}" style="border: 1px solid #e5e7eb; background: #fff; padding: 12px; margin: 24px 0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); position: relative; z-index: 10;">
                             <div class="slides-toolbar" style="display: flex; gap: 12px; margin-bottom: 12px; justify-content: center; flex-wrap: wrap;">
-                                <button id="${slideButtonId}" class="gslide-convert-btn" style="cursor: pointer; background: rgba(99, 102, 241, 0.1); color: #4f46e5; padding: 8px 16px; border-radius: 99px; font-weight: 600; font-family: inherit; font-size: 13px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(99, 102, 241, 0.2); transition: all 0.2s;">
+                                <button id="${slideButtonId}" class="gslide-convert-btn" data-iframe-id="${iframeId}" data-render-id="${renderDivId}" data-container-id="${containerId}" style="cursor: pointer; background: rgba(99, 102, 241, 0.1); color: #4f46e5; padding: 8px 16px; border-radius: 99px; font-weight: 600; font-family: inherit; font-size: 13px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(99, 102, 241, 0.2); transition: all 0.2s;">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                                     Convertir a SVG (Offline)
                                 </button>
                             </div>
                             
-                            <div id="iframe-container-${slideButtonId}" style="position: relative; overflow: hidden; width: 100%; aspect-ratio: 16/9; border-radius: 8px; border: 1px solid rgba(0,0,0,0.05); background: #f9fafb;">
+                            <div id="${containerId}" class="gslide-iframe-container" style="position: relative; overflow: hidden; width: 100%; aspect-ratio: 16/9; border-radius: 8px; border: 1px solid rgba(0,0,0,0.05); background: #f9fafb;">
                             </div>
 
-                            <div id="render-${slideButtonId}" class="slides-svg-container" style="display: none; flex-direction: column; gap: 16px; align-items: center; width: 100%; margin-top: 16px;"></div>
+                            <div id="${renderDivId}" class="slides-svg-container" style="display: none; flex-direction: column; gap: 16px; align-items: center; width: 100%; margin-top: 16px;"></div>
                         </div>
                      `;
                      
                      iframe.insertAdjacentHTML("afterend", overlayUI);
                      
-                     // Move the iframe into our clean UI container
-                     const iframeContainer = document.getElementById(`iframe-container-${slideButtonId}`);
+                     // Find container within the 'doc' fragment, not the main document
+                     const iframeContainer = doc.getElementById(containerId);
                      if (iframeContainer) {
-                         // Reset iframe styles to be relative to our new container
+                         // Style the iframe to be relative to our new container
                          iframe.style.position = "absolute";
                          iframe.style.top = "0";
                          iframe.style.left = "0";
@@ -194,79 +192,6 @@ export const parseBookContent = (htmlString, endpoint) => {
                          iframe.style.border = "none";
                          iframeContainer.appendChild(iframe);
                      }
-
-                     setTimeout(() => {
-                         const btn = document.getElementById(slideButtonId);
-                         const renderDiv = document.getElementById(`render-${slideButtonId}`);
-                         const innerFrame = document.getElementById(iframeId);
-                         const wrapper = btn.closest('.moodle-google-slides-wrapper');
-                         
-                         if (btn && innerFrame) {
-                             btn.addEventListener('click', (e) => {
-                                 e?.preventDefault();
-                                 if (btn.disabled) return;
-
-                                 btn.innerHTML = `<span class="loading loading-spinner loading-xs"></span> Procesando...`;
-                                 btn.disabled = true;
-                                 
-                                 renderDiv.style.display = "flex";
-                                 renderDiv.innerHTML = `
-                                    <div class="w-full flex flex-col gap-4 animate-pulse px-2">
-                                       <div class="w-full aspect-video bg-indigo-50 rounded-xl"></div>
-                                    </div>
-                                 `;
-                                 
-                                 innerFrame.contentWindow.postMessage({ type: "getText" }, "*");
-                                 
-                                 const resultListener = (event) => {
-                                     if (event.data && event.data.type === "SLIDES_EXTRACTED") {
-                                         btn.innerHTML = "✓ Convertido";
-                                         btn.style.background = "#ecfdf5";
-                                         btn.style.color = "#059669";
-                                         btn.style.borderColor = "#10b981";
-
-                                         const svgHtml = event.data.data.map(svg => `<div class="gslide-svg-item" style="width: 100%; border: 1px solid #eee; background: white; border-radius: 12px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">${svg}</div>`).join('');
-                                         renderDiv.innerHTML = svgHtml;
-                                         iframeContainer.style.display = 'none';
-
-                                         // Add a "Show Original" button if it doesn't exist
-                                         if (!wrapper.querySelector('.gslide-show-original-btn')) {
-                                             const showOriginalBtn = document.createElement('button');
-                                             showOriginalBtn.className = 'gslide-show-original-btn';
-                                             showOriginalBtn.innerHTML = 'Ver Interactivo';
-                                             showOriginalBtn.style.cssText = 'cursor: pointer; background: #fff; color: #6b7280; padding: 8px 16px; border-radius: 99px; font-weight: 600; font-family: inherit; font-size: 13px; border: 1px solid #e5e7eb; transition: all 0.2s;';
-                                             showOriginalBtn.onclick = () => {
-                                                 const isShowingIframe = iframeContainer.style.display !== 'none';
-                                                 iframeContainer.style.display = isShowingIframe ? 'none' : 'block';
-                                                 renderDiv.style.display = isShowingIframe ? 'flex' : 'none';
-                                                 showOriginalBtn.innerHTML = isShowingIframe ? 'Ver Interactivo' : 'Ver Estático (SVG)';
-                                             };
-                                             wrapper.querySelector('.slides-toolbar').appendChild(showOriginalBtn);
-                                         }
-                                         
-                                         // Dispatch event to persist in PGlite
-                                         const chapterEl = wrapper.closest('.book_chapter');
-                                         if (chapterEl) {
-                                             window.dispatchEvent(new CustomEvent('MOODLE_CHAPTER_UPDATED', {
-                                                 detail: {
-                                                     chapterId: chapterEl.id,
-                                                     newHtml: chapterEl.innerHTML
-                                                 }
-                                             }));
-                                         }
-
-                                         window.removeEventListener("message", resultListener);
-                                     } else if (event.data && event.data.type === "SLIDES_ERROR") {
-                                         btn.innerHTML = "Error";
-                                         btn.disabled = false;
-                                         window.removeEventListener("message", resultListener);
-                                     }
-                                 };
-                                 
-                                 window.addEventListener("message", resultListener);
-                             });
-                         }
-                     }, 100);
                  }
              }
         });

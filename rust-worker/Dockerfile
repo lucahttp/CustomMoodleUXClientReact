@@ -10,7 +10,7 @@ RUN apk add --no-cache musl-dev openssl-dev pkgconfig && \
 FROM alpine:latest
 
 # Install runtime dependencies
-RUN apk add --no-cache ca-certificates openssl libgcc
+RUN apk add --no-cache ca-certificates openssl libgcc ffmpeg
 
 COPY --from=builder /usr/src/app/target/release/rust-worker /usr/local/bin/rust-worker
 

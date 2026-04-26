@@ -28,6 +28,98 @@ const BookReader = ({ htmlContent, endpoint, anchorId, onBack }) => {
     }
   }, [anchorId, bookData]);
 
+  // Hydrate Google Slides buttons after render
+  useEffect(() => {
+    const buttons = document.querySelectorAll('.gslide-convert-btn');
+    const handlers = [];
+
+    buttons.forEach(btn => {
+      const iframeId = btn.getAttribute('data-iframe-id');
+      const renderId = btn.getAttribute('data-render-id');
+      const containerId = btn.getAttribute('data-container-id');
+      
+      const clickHandler = (e) => {
+        e?.preventDefault();
+        if (btn.disabled) return;
+        
+        const innerFrame = document.getElementById(iframeId);
+        const renderDiv = document.getElementById(renderId);
+        const iframeContainer = document.getElementById(containerId);
+        const wrapper = btn.closest('.moodle-google-slides-wrapper');
+
+        if (!innerFrame || !renderDiv) return;
+
+        btn.innerHTML = `<span class="loading loading-spinner loading-xs"></span> Procesando...`;
+        btn.disabled = true;
+        
+        renderDiv.style.display = "flex";
+        renderDiv.innerHTML = `
+           <div class="w-full flex flex-col gap-4 animate-pulse px-2">
+              <div class="w-full aspect-video bg-indigo-50 rounded-xl"></div>
+           </div>
+        `;
+        
+        innerFrame.contentWindow.postMessage({ type: "getText" }, "*");
+
+        const resultListener = (event) => {
+          if (event.data && event.data.type === "SLIDES_EXTRACTED") {
+            btn.innerHTML = "✓ Convertido";
+            btn.style.background = "#ecfdf5";
+            btn.style.color = "#059669";
+            btn.style.borderColor = "#10b981";
+
+            const svgHtml = event.data.data.map(svg => `<div class="gslide-svg-item" style="width: 100%; border: 1px solid #eee; background: white; border-radius: 12px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">${svg}</div>`).join('');
+            renderDiv.innerHTML = svgHtml;
+            if (iframeContainer) iframeContainer.style.display = 'none';
+
+            // Add a "Show Original" button if it doesn't exist
+            if (!wrapper.querySelector('.gslide-show-original-btn')) {
+              const showOriginalBtn = document.createElement('button');
+              showOriginalBtn.className = 'gslide-show-original-btn';
+              showOriginalBtn.innerHTML = 'Ver Interactivo';
+              showOriginalBtn.style.cssText = 'cursor: pointer; background: #fff; color: #6b7280; padding: 8px 16px; border-radius: 99px; font-weight: 600; font-family: inherit; font-size: 13px; border: 1px solid #e5e7eb; transition: all 0.2s; margin-left: 8px;';
+              showOriginalBtn.onclick = () => {
+                const isShowingIframe = iframeContainer.style.display !== 'none';
+                iframeContainer.style.display = isShowingIframe ? 'none' : 'block';
+                renderDiv.style.display = isShowingIframe ? 'flex' : 'none';
+                showOriginalBtn.innerHTML = isShowingIframe ? 'Ver Interactivo' : 'Ver Estático (SVG)';
+              };
+              wrapper.querySelector('.slides-toolbar').appendChild(showOriginalBtn);
+            }
+            
+            // Dispatch event to persist in PGlite
+            const chapterEl = wrapper.closest('.book_chapter');
+            if (chapterEl) {
+              window.dispatchEvent(new CustomEvent('MOODLE_CHAPTER_UPDATED', {
+                detail: {
+                  chapterId: chapterEl.id,
+                  newHtml: chapterEl.innerHTML
+                }
+              }));
+            }
+
+            window.removeEventListener("message", resultListener);
+          } else if (event.data && event.data.type === "SLIDES_ERROR") {
+            btn.innerHTML = "Error";
+            btn.disabled = false;
+            window.removeEventListener("message", resultListener);
+          }
+        };
+
+        window.addEventListener("message", resultListener);
+      };
+
+      btn.addEventListener('click', clickHandler);
+      handlers.push({ btn, clickHandler });
+    });
+
+    return () => {
+      handlers.forEach(({ btn, clickHandler }) => {
+        btn.removeEventListener('click', clickHandler);
+      });
+    };
+  }, [bookData, viewMode, currentSlide]);
+
   const exportToMarkdown = () => {
     try {
       const turndownService = new TurndownService({
@@ -88,7 +180,7 @@ const BookReader = ({ htmlContent, endpoint, anchorId, onBack }) => {
       setConversionProgress(Math.round((count / buttons.length) * 100));
       
       // Wait a bit for the extraction to finish or at least start processing
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 4000)); // Increased wait time for batch
     }
     
     setIsConvertingAll(false);

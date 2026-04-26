@@ -107,6 +107,44 @@ export const makeFilteredSearchQuery = (courseId) => `
 `;
 
 /**
+ * Busca filtrando por un recurso (video o libro) específico.
+ */
+export const makeResourceSearchQuery = (resourceId) => `
+    WITH search_query AS (
+        SELECT websearch_to_tsquery('spanish', $1) AS query
+    )
+    SELECT * FROM (
+        SELECT 
+            'video' AS source_type,
+            r.id AS resource_id,
+            r.titulo AS resource_title,
+            t.start_time::text AS deep_link_ref,
+            ts_headline('spanish', t.text_content, sq.query, 'StartSel = <mark>, StopSel = </mark>, MaxWords=35, MinWords=15') AS snippet,
+            ts_rank(t.fts_vector, sq.query) AS rank
+        FROM transcripciones_video t
+        JOIN recursos r ON t.video_id = r.id
+        CROSS JOIN search_query sq
+        WHERE sq.query @@ t.fts_vector AND r.id = '${resourceId}'
+        
+        UNION ALL
+        
+        SELECT 
+            'book' AS source_type,
+            r.id AS resource_id,
+            r.titulo || ' - ' || c.titulo_capitulo AS resource_title,
+            c.anchor_id AS deep_link_ref,
+            ts_headline('spanish', c.text_content, sq.query, 'StartSel = <mark>, StopSel = </mark>, MaxWords=35, MinWords=15') AS snippet,
+            ts_rank(c.fts_vector, sq.query) AS rank
+        FROM capitulos_libros c
+        JOIN recursos r ON c.libro_id = r.id
+        CROSS JOIN search_query sq
+        WHERE sq.query @@ c.fts_vector AND r.id = '${resourceId}'
+    ) combinados
+    ORDER BY rank DESC
+    LIMIT 50;
+`;
+
+/**
  * Inserta un recurso de video y un bulk de sus transcripciones en la DB PGlite 
  * de manera transaccional. Esto disparará automáticamente los triggers internos 
  * "tsvector" definidos en tu `schema.sql`.

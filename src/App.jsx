@@ -338,6 +338,7 @@ const App = () => {
           isOpen={sidebarOpen}
           setIsOpen={setSidebarOpen}
           courseId={selectedCourse?.id}
+          resourceId={currentView === VIEWS.BOOK ? selectedBookId : (currentView === VIEWS.VIDEO ? videoResource?.id : null)}
           onResourceClick={handleResourceClick}
         />
 

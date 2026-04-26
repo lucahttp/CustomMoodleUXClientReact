@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: temboio/pgmq-pg:latest
     container_name: moodle_postgres
     environment:
       POSTGRES_USER: postgres
@@ -12,6 +12,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./server_init.sql:/docker-entrypoint-initdb.d/server_init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s

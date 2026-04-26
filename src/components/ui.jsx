@@ -42,7 +42,7 @@ export const Logo = memo(({ onClick }) => (
 ));
 
 import { getPgliteInstance } from "../db/pgliteSync";
-import { makeGlobalSearchQuery, makeFilteredSearchQuery } from "../db/queries";
+import { makeGlobalSearchQuery, makeFilteredSearchQuery, makeResourceSearchQuery } from "../db/queries";
 
 // Sidebar Component
 export const Sidebar = memo(
@@ -51,6 +51,7 @@ export const Sidebar = memo(
     setIsOpen: setSidebarOpen,
     searchTitle = "carrera",
     courseId = null,
+    resourceId = null,
     onResourceClick = () => {},
   }) => {
     const [searchTerm, setSearchTerm] = useState("");
@@ -67,7 +68,14 @@ export const Sidebar = memo(
         setIsSearching(true);
         try {
           const db = await getPgliteInstance();
-          const query = courseId ? makeFilteredSearchQuery(courseId) : makeGlobalSearchQuery();
+          let query;
+          if (resourceId) {
+            query = makeResourceSearchQuery(resourceId);
+          } else if (courseId) {
+            query = makeFilteredSearchQuery(courseId);
+          } else {
+            query = makeGlobalSearchQuery();
+          }
           const res = await db.query(query, [searchTerm]);
           setSearchResults(res.rows || []);
         } catch (err) {
@@ -79,7 +87,7 @@ export const Sidebar = memo(
 
       const timer = setTimeout(performSearch, 300);
       return () => clearTimeout(timer);
-    }, [searchTerm, courseId]);
+    }, [searchTerm, courseId, resourceId]);
 
     const handleResultClick = (result) => {
       onResourceClick({
@@ -149,7 +157,7 @@ export const Sidebar = memo(
                         focus:outline-none focus:ring-2 focus:ring-stone-200/50
                         transition-all
                     "
-              placeholder={courseId ? "Buscar en este curso..." : "Buscar en todo..."}
+              placeholder={resourceId ? "Buscar en este material..." : (courseId ? "Buscar en este curso..." : "Buscar en todo...")}
             />
           </div>
 

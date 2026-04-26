@@ -29,40 +29,22 @@ export const VideoPlayer = memo(({ resource, onBack }) => {
 
   useEffect(() => {
     console.log(`[VideoPlayer] 🎬 Mounting player for: "${resource.name}" (ID: ${resource.id})`);
-    if (resource.startTime) console.log(`[VideoPlayer] ⏱️ Targeted startTime: ${resource.startTime}`);
     
-    async function loadVideo() {
-      try {
-        // Case 1: Video already has a direct URL (YouTube, remote, etc.)
-        if (resource.videoUrl && !String(resource.videoUrl).startsWith('local://')) {
-          setVideoSrc(resource.videoUrl);
-          setVttSrc(resource.vttUrl || null);
-          return;
-        }
-        
-        // Case 2: Extract URL from Moodle or play from local PGlite
-        setLoading(false);
-        setDownloadStatus('🔍 Buscando grabación en Moodle...');
-        const result = await processZoomRecording(
-          resource.sessionUrl || window.__MOODLE_SESSION_URL__ || '',
-          resource.course?.id || '0',
-          resource.id,
-          resource.course?.fullname || 'Unknown',
-          resource.name,
-          (msg) => setDownloadStatus(msg)
-        );
-        if (result.success) {
-          setVideoSrc(result.videoUrl);
-          setDownloadStatus(null);
-          setLoading(false);
-        } else {
-          setDownloadStatus(`❌ ${result.error || 'Error descargando el video.'}`);
-        }
-        return;
+    let unsubTranscriptions = null;
+    let unsubRecurso = null;
 
-        // Suscribirse a las transcripciones sincronizadas por ElectricSQL
+    async function initLiveSync() {
+      try {
         const db = await getPgliteInstance();
         
+        // 1. Initial State
+        if (resource.videoUrl) {
+          setVideoSrc(resource.videoUrl);
+          setVttSrc(resource.vttUrl || null);
+          setLoading(false);
+        }
+
+        // 2. Watch for Transcriptions
         const buildVtt = (rows) => {
           if (rows.length === 0) return;
           let vttText = "WEBVTT\n\n";
@@ -74,86 +56,88 @@ export const VideoPlayer = memo(({ resource, onBack }) => {
           }
           const vttBlob = new Blob([vttText], { type: 'text/vtt' });
           setVttSrc(URL.createObjectURL(vttBlob));
-          console.log(`[VideoPlayer] 📄 VTT actualizado en vivo con ${rows.length} segmentos.`);
+          console.log(`[VideoPlayer] 📄 VTT actualizado con ${rows.length} segmentos.`);
         };
 
-        // Guardar la función de cleanup de ElectricSQL
-        let unsubscribeFn = null;
-        const liveQueryPromise = db.live.query(
+        const transQuery = await db.live.query(
           `SELECT start_time, text_content FROM transcripciones_video WHERE video_id = $1 ORDER BY start_time ASC`,
           [String(resource.id)],
-          (res) => {
-            buildVtt(res.rows);
-          }
+          (res) => buildVtt(res.rows)
         );
+        unsubTranscriptions = transQuery.unsubscribe;
 
-        let unsubscribeRecurso = null;
-        const recursoQueryPromise = db.live.query(
-          `SELECT status, rustfs_path FROM recursos WHERE id = $1 LIMIT 1`,
+        // 3. Watch for Download Status & RustFS Path
+        const recQuery = await db.live.query(
+          `SELECT status, rustfs_path, moodle_url FROM recursos WHERE id = $1 LIMIT 1`,
           [String(resource.id)],
           (res) => {
             if (res.rows.length > 0) {
               const r = res.rows[0];
-              if (r.status === 'completado' || r.status === 'pending_transcription' || r.status === 'transcribing') {
-                const localVideoUrl = `http://localhost:9000/download?path=${encodeURIComponent(r.rustfs_path)}`;
+              
+              // If we don't have a videoSrc yet, use moodle_url
+              if (!videoSrc && r.moodle_url) {
+                setVideoSrc(r.moodle_url);
+              }
+
+              // If download completed, switch to local URL
+              const isFinished = ['completado', 'pending_transcription', 'transcribing'].includes(r.status);
+              if (isFinished && r.rustfs_path && !r.rustfs_path.startsWith('_placeholder')) {
+                const localUrl = `http://localhost:9000/download?path=${encodeURIComponent(r.rustfs_path)}`;
                 setVideoSrc(prev => {
-                  if (prev && prev !== localVideoUrl && !prev.includes('localhost:9000')) {
-                    console.log("[VideoPlayer] 🔄 Descarga completada. Cambiando origen a local offline.");
-                    // Guardar tiempo y restaurar tras el rerender
+                  if (prev && prev !== localUrl && !prev.includes('localhost:9000')) {
+                    console.log("[VideoPlayer] 🔄 Descarga completada! Cambiando a storage local (RustFS).");
+                    // Restore current time after source change
                     if (playerRef.current?.plyr) {
                       const ct = playerRef.current.plyr.currentTime;
                       setTimeout(() => {
                         if (playerRef.current?.plyr) {
                           playerRef.current.plyr.currentTime = ct;
-                          playerRef.current.plyr.play().catch(e => console.warn(e));
+                          playerRef.current.plyr.play().catch(() => {});
                         }
-                      }, 300);
+                      }, 500);
                     }
-                    return localVideoUrl;
                   }
-                  return prev || localVideoUrl;
+                  return localUrl;
                 });
+                setDownloadStatus(null);
+              } else if (r.status === 'downloading') {
+                setDownloadStatus('📥 Descargando video al servidor...');
+              } else if (r.status === 'no_descargado') {
+                setDownloadStatus('⏳ En espera para descargar...');
               }
             }
           }
         );
+        unsubRecurso = recQuery.unsubscribe;
 
-        liveQueryPromise.then(({ unsubscribe }) => {
-          unsubscribeFn = unsubscribe;
-        });
-        
-        recursoQueryPromise.then(({ unsubscribe }) => {
-          unsubscribeRecurso = unsubscribe;
-        });
+        // 4. Trigger processZoomRecording if needed (to get the initial moodle_url)
+        if (!resource.videoUrl && !resource.rustfs_path) {
+          processZoomRecording(
+            resource.sessionUrl || window.__MOODLE_SESSION_URL__ || '',
+            resource.course?.id || '0',
+            resource.id,
+            resource.course?.fullname || 'Unknown',
+            resource.name,
+            (msg) => setDownloadStatus(msg)
+          ).then(result => {
+             if (result.success && !videoSrc) setVideoSrc(result.videoUrl);
+          });
+        }
 
-        // Devolvemos el cleanup al closure de loadVideo
-        return () => {
-          if (unsubscribeFn) {
-            unsubscribeFn();
-            console.log(`[VideoPlayer] 🧹 Unsubscribed from transcriptions live query`);
-          }
-          if (unsubscribeRecurso) {
-            unsubscribeRecurso();
-            console.log(`[VideoPlayer] 🧹 Unsubscribed from recurso live query`);
-          }
-        };
-
-      } catch (e) {
-        console.error(`[VideoPlayer] ❌ Error loading video:`, e);
+      } catch (err) {
+        console.error("[VideoPlayer] Error in sync:", err);
       } finally {
         setLoading(false);
       }
     }
-    
-    // Almacenamos la función de cleanup que loadVideo podría retornar
-    let cleanup = null;
-    loadVideo().then(fn => { if (typeof fn === 'function') cleanup = fn; });
 
-    // Cuando useEffect se desmonte, ejecutamos el cleanup
+    initLiveSync();
+
     return () => {
-      if (cleanup) cleanup();
+      if (unsubTranscriptions) unsubTranscriptions();
+      if (unsubRecurso) unsubRecurso();
     };
-  }, [resource]);
+  }, [resource.id]);
 
   // Handle seeking when player is ready
   useEffect(() => {
