@@ -1,14 +1,41 @@
 import React, { useMemo, useEffect, useState } from 'react';
-import { MonitorPlay, Download, FileDown, Printer, LayoutList, Presentation, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { MonitorPlay, Download, FileDown, Printer, LayoutList, Presentation, ChevronLeft, ChevronRight, Sparkles, Loader2 } from 'lucide-react';
 import TurndownService from 'turndown';
 import { parseBookContent } from "../utils/bookParser";
 import "./BookReader.css";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const BookReader = ({ htmlContent, endpoint, anchorId, onBack }) => {
   const [viewMode, setViewMode] = useState('continuous'); // 'continuous' | 'slides'
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isConvertingAll, setIsConvertingAll] = useState(false);
   const [conversionProgress, setConversionProgress] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Helper to convert images to Base64
+  const convertImagesToBase64 = async (container) => {
+    const images = Array.from(container.querySelectorAll('img'));
+    const promises = images.map(async (img) => {
+      try {
+        if (img.src.startsWith('data:')) return;
+        
+        const response = await fetch(img.src);
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            img.src = reader.result;
+            resolve();
+          };
+          reader.readAsDataURL(blob);
+        });
+      } catch (err) {
+        console.warn("Could not convert image to base64", img.src, err);
+      }
+    });
+    await Promise.all(promises);
+  };
 
   // Parse HTML string into Data Object
   const bookData = useMemo(() => {
@@ -120,14 +147,15 @@ const BookReader = ({ htmlContent, endpoint, anchorId, onBack }) => {
     };
   }, [bookData, viewMode, currentSlide]);
 
-  const exportToMarkdown = () => {
+  const exportToMarkdown = async () => {
+    setIsExporting(true);
     try {
       const turndownService = new TurndownService({
         headingStyle: 'atx',
         codeBlockStyle: 'fenced'
       });
 
-      // Keep SVGs in Markdown as raw HTML (most modern viewers support this)
+      // Keep SVGs in Markdown as raw HTML
       turndownService.addRule('keep-svg', {
         filter: ['svg'],
         replacement: (content, node) => {
@@ -136,11 +164,24 @@ const BookReader = ({ htmlContent, endpoint, anchorId, onBack }) => {
       });
       
       let fullMarkdown = `# ${bookData.bookTitle}\n\n`;
-      bookData.chapters.forEach(chapter => {
+      
+      for (const chapter of bookData.chapters) {
         fullMarkdown += `## ${chapter.title}\n\n`;
-        fullMarkdown += turndownService.turndown(chapter.content) + '\n\n';
-        fullMarkdown += '---\n\n'; // Slide separator
-      });
+        
+        // Try to get content from DOM to capture converted SVGs
+        const domChapter = document.getElementById(chapter.id);
+        const contentHtml = domChapter ? domChapter.querySelector('.prose').innerHTML : chapter.content;
+
+        // Create a temporary element to process images
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = contentHtml;
+        
+        // Convert images to base64 within this chapter
+        await convertImagesToBase64(tempDiv);
+        
+        fullMarkdown += turndownService.turndown(tempDiv.innerHTML) + '\n\n';
+        fullMarkdown += '---\n\n'; 
+      }
 
       const blob = new Blob([fullMarkdown], { type: 'text/markdown;charset=utf-8' });
       const url = URL.createObjectURL(blob);
@@ -154,11 +195,83 @@ const BookReader = ({ htmlContent, endpoint, anchorId, onBack }) => {
     } catch (err) {
       console.error("Failed to export Markdown", err);
       alert("Hubo un error exportando el markdown.");
+    } finally {
+      setIsExporting(false);
     }
   };
 
-  const exportToPDF = () => {
-    window.print();
+  const exportToPDF = async () => {
+    setIsExporting(true);
+    try {
+      // Create a full representation of the book for the PDF
+      const pdfContainer = document.createElement('div');
+      pdfContainer.style.position = 'fixed';
+      pdfContainer.style.left = '-9999px';
+      pdfContainer.style.top = '0';
+      pdfContainer.style.width = '800px'; // Standard width for PDF rendering
+      pdfContainer.style.backgroundColor = 'white';
+      pdfContainer.style.padding = '40px';
+      pdfContainer.className = 'prose prose-lg max-w-none';
+      
+      pdfContainer.innerHTML = `
+        <h1 style="font-size: 32px; font-weight: 800; margin-bottom: 20px;">${bookData.bookTitle}</h1>
+        <hr style="margin-bottom: 40px;"/>
+      `;
+      
+      for (const chapter of bookData.chapters) {
+        const chapterDiv = document.createElement('div');
+        // Try to get content from DOM to capture converted SVGs
+        const domChapter = document.getElementById(chapter.id);
+        const contentHtml = domChapter ? domChapter.querySelector('.prose').innerHTML : chapter.content;
+        
+        chapterDiv.innerHTML = `
+          <h2 style="font-size: 24px; font-weight: 700; margin-top: 40px; margin-bottom: 20px;">${chapter.title}</h2>
+          <div class="chapter-content">${contentHtml}</div>
+          <div style="page-break-after: always;"></div>
+        `;
+        pdfContainer.appendChild(chapterDiv);
+      }
+      
+      document.body.appendChild(pdfContainer);
+
+      // Process images to base64 before rendering
+      await convertImagesToBase64(pdfContainer);
+
+      const canvas = await html2canvas(pdfContainer, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      // Handle multiple pages if needed
+      let heightLeft = pdfHeight;
+      let position = 0;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`${bookData.bookTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`);
+      document.body.removeChild(pdfContainer);
+    } catch (err) {
+      console.error("Failed to generate PDF", err);
+      alert("Hubo un error generando el PDF.");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const convertAllSlides = async () => {
@@ -226,19 +339,21 @@ const BookReader = ({ htmlContent, endpoint, anchorId, onBack }) => {
         <div className="flex items-center gap-3">
           <button 
             onClick={exportToMarkdown}
-            className="flex items-center gap-2 px-3 py-2 bg-white border border-stone-200 shadow-sm rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:border-stone-300 transition-all active:scale-95"
+            disabled={isExporting}
+            className="flex items-center gap-2 px-3 py-2 bg-white border border-stone-200 shadow-sm rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:border-stone-300 transition-all active:scale-95 disabled:opacity-50"
             title="Descargar como Markdown"
           >
-            <FileDown className="w-4 h-4 text-indigo-500" />
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin text-indigo-500" /> : <FileDown className="w-4 h-4 text-indigo-500" />}
             <span>Markdown</span>
           </button>
           
           <button 
             onClick={exportToPDF}
-            className="flex items-center gap-2 px-3 py-2 bg-white border border-stone-200 shadow-sm rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:border-stone-300 transition-all active:scale-95"
-            title="Guardar como PDF o Imprimir"
+            disabled={isExporting}
+            className="flex items-center gap-2 px-3 py-2 bg-white border border-stone-200 shadow-sm rounded-xl text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:border-stone-300 transition-all active:scale-95 disabled:opacity-50"
+            title="Generar PDF Offline"
           >
-            <Printer className="w-4 h-4 text-emerald-500" />
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin text-emerald-500" /> : <Printer className="w-4 h-4 text-emerald-500" />}
             <span>PDF</span>
           </button>
 
