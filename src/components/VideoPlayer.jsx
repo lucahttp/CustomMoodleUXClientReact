@@ -39,51 +39,26 @@ export const VideoPlayer = memo(({ resource, onBack }) => {
           setVttSrc(resource.vttUrl || null);
           return;
         }
-
-        // Case 2: Video referenced as local:// — check daemon, then download if needed
-        // First try daemon (file already saved to Boveda/)
-        let daemonUrl = null;
-        try {
-          const res = await fetch(`http://localhost:3000/api/media/${resource.id}`);
-          const json = await res.json();
-          if (json.success && json.data?.url) {
-            console.log(`[VideoPlayer] ✅ Local Bóveda URL: ${json.data.url}`);
-            daemonUrl = json.data.url;
-          }
-        } catch (_) {
-          console.warn('[VideoPlayer] Daemon not reachable, will try download');
-        }
-
-        if (daemonUrl) {
-          setVideoSrc(daemonUrl);
-        } else {
-          // Not in Boveda yet — trigger download via extension
+        
+        // Case 2: Extract URL from Moodle or play from local PGlite
+        setLoading(false);
+        setDownloadStatus('🔍 Buscando grabación en Moodle...');
+        const result = await processZoomRecording(
+          resource.sessionUrl || window.__MOODLE_SESSION_URL__ || '',
+          resource.course?.id || '0',
+          resource.id,
+          resource.course?.fullname || 'Unknown',
+          resource.name,
+          (msg) => setDownloadStatus(msg)
+        );
+        if (result.success) {
+          setVideoSrc(result.videoUrl);
+          setDownloadStatus(null);
           setLoading(false);
-          setDownloadStatus('🔍 Buscando grabación en Moodle...');
-          const result = await processZoomRecording(
-            resource.sessionUrl || window.__MOODLE_SESSION_URL__ || '',
-            resource.course?.id || '0',
-            resource.id,
-            resource.course?.fullname || 'Unknown',
-            resource.name,
-            (msg) => setDownloadStatus(msg)
-          );
-          if (result.success) {
-            // Re-check daemon for the URL now that it was ingested
-            try {
-              const res2 = await fetch(`http://localhost:3000/api/media/${resource.id}`);
-              const json2 = await res2.json();
-              if (json2.success && json2.data?.url) {
-                setVideoSrc(json2.data.url);
-                setDownloadStatus(null);
-                setLoading(false);
-              }
-            } catch (_) {}
-          } else {
-            setDownloadStatus(`❌ ${result.error || 'Error descargando el video.'}`);
-          }
-          return;
+        } else {
+          setDownloadStatus(`❌ ${result.error || 'Error descargando el video.'}`);
         }
+        return;
 
         // Reconstruct VTT from PGlite FTS chunks for captions
         const db = await getPgliteInstance();
