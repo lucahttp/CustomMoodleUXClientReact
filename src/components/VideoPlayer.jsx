@@ -60,24 +60,84 @@ export const VideoPlayer = memo(({ resource, onBack }) => {
         }
         return;
 
-        // Reconstruct VTT from PGlite FTS chunks for captions
+        // Suscribirse a las transcripciones sincronizadas por ElectricSQL
         const db = await getPgliteInstance();
-        const vttRows = await db.query(
-          `SELECT start_time, text_content FROM transcripciones_video WHERE video_id = $1 ORDER BY start_time ASC`,
-          [String(resource.id)]
-        );
-        if (vttRows.rows.length > 0) {
+        
+        const buildVtt = (rows) => {
+          if (rows.length === 0) return;
           let vttText = "WEBVTT\n\n";
-          for (let i = 0; i < vttRows.rows.length; i++) {
-            const row = vttRows.rows[i];
-            const nextRow = vttRows.rows[i + 1];
+          for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const nextRow = rows[i + 1];
             const endTime = nextRow ? nextRow.start_time : "99:59:59.999";
             vttText += `${row.start_time} --> ${endTime}\n${row.text_content}\n\n`;
           }
           const vttBlob = new Blob([vttText], { type: 'text/vtt' });
           setVttSrc(URL.createObjectURL(vttBlob));
-          console.log(`[VideoPlayer] 📄 VTT rebuilt from ${vttRows.rows.length} PGlite chunks.`);
-        }
+          console.log(`[VideoPlayer] 📄 VTT actualizado en vivo con ${rows.length} segmentos.`);
+        };
+
+        // Guardar la función de cleanup de ElectricSQL
+        let unsubscribeFn = null;
+        const liveQueryPromise = db.live.query(
+          `SELECT start_time, text_content FROM transcripciones_video WHERE video_id = $1 ORDER BY start_time ASC`,
+          [String(resource.id)],
+          (res) => {
+            buildVtt(res.rows);
+          }
+        );
+
+        let unsubscribeRecurso = null;
+        const recursoQueryPromise = db.live.query(
+          `SELECT status, rustfs_path FROM recursos WHERE id = $1 LIMIT 1`,
+          [String(resource.id)],
+          (res) => {
+            if (res.rows.length > 0) {
+              const r = res.rows[0];
+              if (r.status === 'completado' || r.status === 'pending_transcription' || r.status === 'transcribing') {
+                const localVideoUrl = `http://localhost:9000/download?path=${encodeURIComponent(r.rustfs_path)}`;
+                setVideoSrc(prev => {
+                  if (prev && prev !== localVideoUrl && !prev.includes('localhost:9000')) {
+                    console.log("[VideoPlayer] 🔄 Descarga completada. Cambiando origen a local offline.");
+                    // Guardar tiempo y restaurar tras el rerender
+                    if (playerRef.current?.plyr) {
+                      const ct = playerRef.current.plyr.currentTime;
+                      setTimeout(() => {
+                        if (playerRef.current?.plyr) {
+                          playerRef.current.plyr.currentTime = ct;
+                          playerRef.current.plyr.play().catch(e => console.warn(e));
+                        }
+                      }, 300);
+                    }
+                    return localVideoUrl;
+                  }
+                  return prev || localVideoUrl;
+                });
+              }
+            }
+          }
+        );
+
+        liveQueryPromise.then(({ unsubscribe }) => {
+          unsubscribeFn = unsubscribe;
+        });
+        
+        recursoQueryPromise.then(({ unsubscribe }) => {
+          unsubscribeRecurso = unsubscribe;
+        });
+
+        // Devolvemos el cleanup al closure de loadVideo
+        return () => {
+          if (unsubscribeFn) {
+            unsubscribeFn();
+            console.log(`[VideoPlayer] 🧹 Unsubscribed from transcriptions live query`);
+          }
+          if (unsubscribeRecurso) {
+            unsubscribeRecurso();
+            console.log(`[VideoPlayer] 🧹 Unsubscribed from recurso live query`);
+          }
+        };
+
       } catch (e) {
         console.error(`[VideoPlayer] ❌ Error loading video:`, e);
       } finally {
@@ -85,7 +145,14 @@ export const VideoPlayer = memo(({ resource, onBack }) => {
       }
     }
     
-    loadVideo();
+    // Almacenamos la función de cleanup que loadVideo podría retornar
+    let cleanup = null;
+    loadVideo().then(fn => { if (typeof fn === 'function') cleanup = fn; });
+
+    // Cuando useEffect se desmonte, ejecutamos el cleanup
+    return () => {
+      if (cleanup) cleanup();
+    };
   }, [resource]);
 
   // Handle seeking when player is ready
@@ -137,6 +204,8 @@ export const VideoPlayer = memo(({ resource, onBack }) => {
   }
 
   const isYouTube = videoSrc && (videoSrc.includes('youtube.com') || videoSrc.includes('youtu.be'));
+  const isLocal = videoSrc && videoSrc.includes('localhost:9000');
+  const isDirectMoodle = videoSrc && !isYouTube && !isLocal;
 
   const videoOptions = {
     type: 'video',
@@ -197,9 +266,34 @@ export const VideoPlayer = memo(({ resource, onBack }) => {
       </header>
 
       <main className="flex-1 flex flex-col justify-center items-center pb-12 pt-6 px-4 md:px-8 max-w-[1240px] w-full mx-auto overflow-hidden">
-        <div className="w-full bg-black rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.6)] border border-stone-800/80 ring-1 ring-white/10 video-container-plyr">
-          <Plyr {...plyrProps} ref={playerRef} />
-        </div>
+        {isDirectMoodle ? (
+          <div className="w-full aspect-video bg-stone-900/50 rounded-3xl flex flex-col items-center justify-center p-8 text-center border border-stone-800/80 shadow-2xl">
+            <div className="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
+              <Download className="w-8 h-8 text-indigo-400 animate-pulse" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-3">Descargando al servidor local</h3>
+            <p className="text-stone-400 max-w-lg mb-8 leading-relaxed">
+              Moodle no permite reproducir este video directamente desde su plataforma debido a bloqueos de seguridad (CORS). El servidor de Rust lo está descargando en segundo plano.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <a 
+                href={videoSrc} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors shadow-lg shadow-indigo-900/20 flex items-center gap-2"
+              >
+                Abrir video en nueva pestaña
+              </a>
+            </div>
+            <p className="mt-8 text-sm text-stone-500 animate-pulse">
+              Esta pantalla cambiará mágicamente al reproductor local cuando la descarga termine.
+            </p>
+          </div>
+        ) : (
+          <div className="w-full bg-black rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.6)] border border-stone-800/80 ring-1 ring-white/10 video-container-plyr">
+            <Plyr {...plyrProps} ref={playerRef} />
+          </div>
+        )}
         <div className="mt-8 text-center text-stone-500 text-xs max-w-2xl px-4">
           <p>Esta grabación ha sido procesada mediante <b>Moodle UX</b>. Los subtítulos fueron generados automáticamente con IA en tu equipo en tiempo real.</p>
         </div>

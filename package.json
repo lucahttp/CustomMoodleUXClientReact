@@ -10,7 +10,7 @@
   "dependencies": {
     "@babel/plugin-proposal-decorators": "^7.28.0",
     "@electric-sql/pglite": "^0.4.2",
-    "@electric-sql/pglite-sync": "^0.5.2",
+    "@electric-sql/pglite-sync": "^0.5.4",
     "@tailwindcss/vite": "^4.1.7",
     "autoprefixer": "^10.4.21",
     "aws4fetch": "^1.0.20",

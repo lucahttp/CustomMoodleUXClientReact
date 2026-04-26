@@ -37,15 +37,24 @@ export const processZoomRecording = async (sessionUrl, courseId, zoomModId, cour
     // ── Step 1: Check PGlite (transcription already done locally) ──────────
     const db = await getPgliteInstance();
     const pgliteCheck = await db.query(
-      'SELECT 1 FROM recursos WHERE id = $1 LIMIT 1',
+      'SELECT rustfs_path, moodle_url, status FROM recursos WHERE id = $1 LIMIT 1',
       [String(zoomModId)]
     );
     if (pgliteCheck.rows.length > 0) {
-      progress("✅ Grabación ya transcripta en PGlite. Sirviendo localmente.");
-      return { success: true, videoUrl: `local://${zoomModId}`, vttUrl: `local://${zoomModId}` };
+      const row = pgliteCheck.rows[0];
+      // Si el video ya está descargado en RustFS
+      if (row.status === 'completado' || row.status === 'pending_transcription' || row.status === 'transcribing') {
+        progress("✅ Grabación ya descargada en el servidor. Sirviendo localmente.");
+        const localVideoUrl = `http://localhost:9000/download?path=${encodeURIComponent(row.rustfs_path)}`;
+        return { success: true, videoUrl: localVideoUrl, vttUrl: null };
+      } else if (row.moodle_url) {
+        // Aún no descargado, pero ya registramos la URL, sirviendo stream
+        progress("▶️ Video encolado. Sirviendo streaming directo desde Moodle mientras se descarga...");
+        return { success: true, videoUrl: row.moodle_url, vttUrl: null };
+      }
     }
 
-    // ── Step 2: Download via Extension (has Moodle session cookies!) ─────────
+    // ── Step 2: Extract Moodle Video URL ─────────
     progress("🔍 Extrayendo URL del video desde Moodle...");
     const videoUrl = await extractVideoUrlFromMoodlePage(sessionUrl, zoomModId);
 
@@ -54,9 +63,36 @@ export const processZoomRecording = async (sessionUrl, courseId, zoomModId, cour
       return { success: false, error: "No video URL found in Moodle page" };
     }
 
-    progress(`✅ URL de video extraída correctamente. Iniciando reproducción directa.`);
+    progress(`✅ URL extraída. Registrando en PGlite para que el servidor descargue...`);
     
-    // Just return the video URL so the player can stream it directly.
+    // Generar fecha en el formato solicitado
+    const fechaActual = new Intl.DateTimeFormat('es-AR', { 
+      weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' 
+    }).format(new Date());
+
+    const placeholderRustFs = `_placeholder_link_s2_rustfs`;
+
+    // ── Step 3: Insertar en PGlite (ElectricSQL sincronizará al Backend) ─────────
+    await db.query(
+      `INSERT INTO recursos 
+       (id, curso_id, titulo, tipo, fecha, moodle_url, rustfs_path, status) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+       ON CONFLICT (id) DO UPDATE SET status = 'no_descargado'`,
+      [
+        String(zoomModId), 
+        String(courseId), 
+        resourceName || 'Grabación', 
+        'video', 
+        fechaActual, 
+        videoUrl, 
+        placeholderRustFs, 
+        'no_descargado'
+      ]
+    );
+
+    progress(`🚀 Tarea encolada exitosamente. El servidor descargará el video y generará las transcripciones.`);
+    
+    // Retornamos la URL original de Cloudfront para que el player pueda reproducir el video instantáneamente
     return { success: true, videoUrl: videoUrl, vttUrl: null };
   } catch (err) {
     progress(`❌ Error: ${err.message}`);

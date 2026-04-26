@@ -1,0 +1,58 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: moodle_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: moodledb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  electric:
+    image: electricsql/electric:latest
+    container_name: moodle_electric
+    environment:
+      DATABASE_URL: "postgresql://postgres:password@postgres:5432/moodledb"
+      PG_PROXY_PASSWORD: password
+    ports:
+      - "3000:3000"
+      - "5133:5133"
+      - "65432:65432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: rustfs
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - rustfs_data:/data
+
+  transcriber:
+    build:
+      context: ./rust-worker
+      dockerfile: Dockerfile
+    container_name: transcriber_worker
+    environment:
+      DATABASE_URL: "postgresql://postgres:password@postgres:5432/moodledb"
+      RUSTFS_URL: "http://rustfs:9000"
+    depends_on:
+      - postgres
+      - rustfs
+
+volumes:
+  pgdata:
+  rustfs_data:

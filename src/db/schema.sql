@@ -14,12 +14,15 @@ CREATE TABLE recursos (
     titulo TEXT NOT NULL,
     tipo VARCHAR(50) NOT NULL, -- 'video' | 'book'
     resumen TEXT,
-    opfs_video_path TEXT, -- Ruta autogenerada al guardar el blob MP4
+    fecha TEXT,
+    moodle_url TEXT,
+    rustfs_path TEXT, -- Ruta autogenerada al guardar el blob MP4 en el servidor
+    status VARCHAR(50) DEFAULT 'no_descargado', -- 'no_descargado' | 'downloading' | 'pending_transcription' | 'transcribing' | 'completado'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 --------------------------------------------------------------------------------
--- 2. TABLAS CHUNKED (FULL-TEXT SEARCH & DEEPLINKING)
+-- 3. TABLAS CHUNKED (FULL-TEXT SEARCH & DEEPLINKING)
 --------------------------------------------------------------------------------
 
 -- Tabla Transcripciones (Chunks de Video)

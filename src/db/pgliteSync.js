@@ -5,6 +5,7 @@
  */
 
 import { PGlite } from '@electric-sql/pglite';
+import { electricSync } from '@electric-sql/pglite-sync';
 
 // Referencia global al singleton de la DB para consumir en toda la app react
 import schemaRaw from './schema.sql?raw';
@@ -26,7 +27,10 @@ export async function initPGlite() {
     
     const db = await PGlite.create({
       dataDir: 'idb://moodle-offline-store',
-      debug: false 
+      debug: false,
+      extensions: {
+        electric: electricSync()
+      }
     });
 
     console.log("[PGlite] ¡Listo! Modo local-first activo.");
@@ -43,6 +47,31 @@ export async function initPGlite() {
       }
     } catch (e) {
        console.warn("[PGlite] ⚠️ Fallo al chequear o insertar el Schema auto-generado:", e);
+    }
+
+    // Iniciar sincronización de tablas mediante shapes de ElectricSQL
+    try {
+      console.log("[PGlite] ⚡ Iniciando sincronización con ElectricSQL...");
+      const syncUrl = 'http://localhost:3000/v1/shape';
+      
+      // Sincronizar recursos (incluye metadata, status y url de descarga)
+      await db.electric.syncShapeToTable({
+        url: syncUrl,
+        shape: { table: 'recursos' },
+        table: 'recursos',
+        primaryKey: ['id']
+      });
+
+      // Sincronizar resultados
+      await db.electric.syncShapeToTable({
+        url: syncUrl,
+        shape: { table: 'transcripciones_video' },
+        table: 'transcripciones_video',
+        primaryKey: ['id']
+      });
+      console.log("[PGlite] ⚡ Sync Shapes registradas exitosamente.");
+    } catch(e) {
+      console.warn("[PGlite] ⚠️ No se pudo inicializar la sincronización de Electric. ¿El servidor está corriendo?", e);
     }
 
     return globalPgliteInstance;
