@@ -165,70 +165,100 @@ export const parseBookContent = (htmlString, endpoint) => {
                      iframe.style.left = "0";
 
                      const overlayUI = `
-                        <div class="moodle-google-slides-wrapper" style="border: 1px solid #e5e7eb; background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); padding: 12px; margin-bottom: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);">
+                        <div class="moodle-google-slides-wrapper" data-presentation-id="${presentationId}" style="border: 1px solid #e5e7eb; background: #fff; padding: 12px; margin: 24px 0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); position: relative; z-index: 10;">
                             <div class="slides-toolbar" style="display: flex; gap: 12px; margin-bottom: 12px; justify-content: center; flex-wrap: wrap;">
-                                <button id="${slideButtonId}" style="cursor: pointer; background: rgba(99, 102, 241, 0.1); color: #4f46e5; padding: 6px 14px; border-radius: 99px; font-weight: 600; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(99, 102, 241, 0.2); transition: all 0.2s;">
+                                <button id="${slideButtonId}" class="gslide-convert-btn" style="cursor: pointer; background: rgba(99, 102, 241, 0.1); color: #4f46e5; padding: 8px 16px; border-radius: 99px; font-weight: 600; font-family: inherit; font-size: 13px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(99, 102, 241, 0.2); transition: all 0.2s;">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                    Extraer a SVG
+                                    Convertir a SVG (Offline)
                                 </button>
                             </div>
                             
-                            <!-- The container where the original Iframe will be moved -->
-                            <div id="iframe-container-${slideButtonId}" style="position: relative; overflow: hidden; padding-top: 56.25%; border-radius: 8px; border: 1px solid rgba(0,0,0,0.05); background: #f9fafb;">
+                            <div id="iframe-container-${slideButtonId}" style="position: relative; overflow: hidden; width: 100%; aspect-ratio: 16/9; border-radius: 8px; border: 1px solid rgba(0,0,0,0.05); background: #f9fafb;">
                             </div>
 
-                            <!-- Slides render space (hidden initially) -->
-                            <div id="render-${slideButtonId}" style="display: none; flex-direction: column; gap: 16px; align-items: center; width: 100%; margin-top: 16px;"></div>
+                            <div id="render-${slideButtonId}" class="slides-svg-container" style="display: none; flex-direction: column; gap: 16px; align-items: center; width: 100%; margin-top: 16px;"></div>
                         </div>
                      `;
                      
                      iframe.insertAdjacentHTML("afterend", overlayUI);
                      
-                     // Move the iframe into our clean glass UI container
+                     // Move the iframe into our clean UI container
                      const iframeContainer = document.getElementById(`iframe-container-${slideButtonId}`);
                      if (iframeContainer) {
+                         // Reset iframe styles to be relative to our new container
+                         iframe.style.position = "absolute";
+                         iframe.style.top = "0";
+                         iframe.style.left = "0";
+                         iframe.style.width = "100%";
+                         iframe.style.height = "100%";
+                         iframe.style.border = "none";
                          iframeContainer.appendChild(iframe);
                      }
 
-                     // Add event listener asynchronously because DOM changes asynchronously maybe
                      setTimeout(() => {
                          const btn = document.getElementById(slideButtonId);
                          const renderDiv = document.getElementById(`render-${slideButtonId}`);
                          const innerFrame = document.getElementById(iframeId);
+                         const wrapper = btn.closest('.moodle-google-slides-wrapper');
                          
                          if (btn && innerFrame) {
                              btn.addEventListener('click', (e) => {
-                                 e.preventDefault();
-                                 btn.innerHTML = `<span class="loading loading-spinner loading-xs"></span> Extrayendo...`;
+                                 e?.preventDefault();
+                                 if (btn.disabled) return;
+
+                                 btn.innerHTML = `<span class="loading loading-spinner loading-xs"></span> Procesando...`;
                                  btn.disabled = true;
                                  
-                                 // Draw the skeleton
                                  renderDiv.style.display = "flex";
                                  renderDiv.innerHTML = `
                                     <div class="w-full flex flex-col gap-4 animate-pulse px-2">
-                                       <div class="w-full aspect-video bg-indigo-100 rounded-xl overflow-hidden relative shadow-sm border border-indigo-50">
-                                            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]"></div>
-                                       </div>
-                                       <div class="w-2/3 h-4 bg-slate-200 rounded-md"></div>
-                                       <div class="w-full aspect-video bg-slate-100 rounded-xl mt-4"></div>
+                                       <div class="w-full aspect-video bg-indigo-50 rounded-xl"></div>
                                     </div>
                                  `;
                                  
-                                 // Send RPC message into the Iframe where our content-script is injected
                                  innerFrame.contentWindow.postMessage({ type: "getText" }, "*");
                                  
-                                 // Listen for the magic extracting results
                                  const resultListener = (event) => {
                                      if (event.data && event.data.type === "SLIDES_EXTRACTED") {
-                                         btn.innerHTML = "Extracción completa";
-                                         renderDiv.innerHTML = event.data.data.map(svg => `<div style="width: 100%; border: 1px solid #ddd; background: white; border-radius: 8px; overflow: hidden; margin-bottom: 8px;">${svg}</div>`).join('');
-                                         // Hide the original iframe since we now have native beautiful SVGs
+                                         btn.innerHTML = "✓ Convertido";
+                                         btn.style.background = "#ecfdf5";
+                                         btn.style.color = "#059669";
+                                         btn.style.borderColor = "#10b981";
+
+                                         const svgHtml = event.data.data.map(svg => `<div class="gslide-svg-item" style="width: 100%; border: 1px solid #eee; background: white; border-radius: 12px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">${svg}</div>`).join('');
+                                         renderDiv.innerHTML = svgHtml;
                                          iframeContainer.style.display = 'none';
+
+                                         // Add a "Show Original" button if it doesn't exist
+                                         if (!wrapper.querySelector('.gslide-show-original-btn')) {
+                                             const showOriginalBtn = document.createElement('button');
+                                             showOriginalBtn.className = 'gslide-show-original-btn';
+                                             showOriginalBtn.innerHTML = 'Ver Interactivo';
+                                             showOriginalBtn.style.cssText = 'cursor: pointer; background: #fff; color: #6b7280; padding: 8px 16px; border-radius: 99px; font-weight: 600; font-family: inherit; font-size: 13px; border: 1px solid #e5e7eb; transition: all 0.2s;';
+                                             showOriginalBtn.onclick = () => {
+                                                 const isShowingIframe = iframeContainer.style.display !== 'none';
+                                                 iframeContainer.style.display = isShowingIframe ? 'none' : 'block';
+                                                 renderDiv.style.display = isShowingIframe ? 'flex' : 'none';
+                                                 showOriginalBtn.innerHTML = isShowingIframe ? 'Ver Interactivo' : 'Ver Estático (SVG)';
+                                             };
+                                             wrapper.querySelector('.slides-toolbar').appendChild(showOriginalBtn);
+                                         }
+                                         
+                                         // Dispatch event to persist in PGlite
+                                         const chapterEl = wrapper.closest('.book_chapter');
+                                         if (chapterEl) {
+                                             window.dispatchEvent(new CustomEvent('MOODLE_CHAPTER_UPDATED', {
+                                                 detail: {
+                                                     chapterId: chapterEl.id,
+                                                     newHtml: chapterEl.innerHTML
+                                                 }
+                                             }));
+                                         }
+
                                          window.removeEventListener("message", resultListener);
                                      } else if (event.data && event.data.type === "SLIDES_ERROR") {
-                                         btn.innerHTML = "Error al extraer";
-                                         btn.style.color = "red";
-                                         renderDiv.innerHTML = `<div class="p-4 bg-red-50 text-red-600 rounded-lg text-sm">Error conectando al Iframe extractor: ${event.data.error || 'Desconocido'}</div>`;
+                                         btn.innerHTML = "Error";
+                                         btn.disabled = false;
                                          window.removeEventListener("message", resultListener);
                                      }
                                  };
@@ -255,4 +285,47 @@ export const parseBookContent = (htmlString, endpoint) => {
         bookTitle,
         chapters,
     };
+};
+
+/**
+ * Utility to fetch and inline SVGs in a book's chapters.
+ * This is async and should be called during ingestion.
+ */
+export const inlineSVGsInChapters = async (chapters) => {
+    const updatedChapters = [];
+    
+    for (const chapter of chapters) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(chapter.content, "text/html");
+        const images = Array.from(doc.querySelectorAll('img[src$=".svg"]'));
+        
+        for (const img of images) {
+            try {
+                const src = img.getAttribute('src');
+                const response = await fetch(src);
+                if (response.ok) {
+                    const svgText = await response.text();
+                    // Basic cleanup of the fetched SVG
+                    const svgDoc = parser.parseFromString(svgText, "image/svg+xml");
+                    const svgEl = svgDoc.querySelector('svg');
+                    if (svgEl) {
+                        // Transfer style/classes from img to svg
+                        const style = img.getAttribute('style');
+                        if (style) svgEl.setAttribute('style', style);
+                        
+                        img.replaceWith(svgEl);
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to inline SVG:', e);
+            }
+        }
+        
+        updatedChapters.push({
+            ...chapter,
+            content: doc.body.innerHTML
+        });
+    }
+    
+    return updatedChapters;
 };

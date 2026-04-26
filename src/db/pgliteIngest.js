@@ -7,7 +7,7 @@
 
 import { getPgliteInstance } from './pgliteSync';
 import { saveFileToOPFS } from './opfs';
-import { parseBookContent } from '../utils/bookParser';
+import { parseBookContent, inlineSVGsInChapters } from '../utils/bookParser';
 
 /**
  * Guarda una grabación Zoom en OPFS y desgrana el texto VTT en fragmentos
@@ -99,30 +99,34 @@ export async function ingestMoodleBook(resourceId, courseId, endpoint, title, ht
    const db = await getPgliteInstance();
    console.log(`[Ingest] 📥 Ingiriendo Moodle Book (ID: ${resourceId}) en PGlite...`);
 
-   await db.query(`
-      INSERT INTO recursos (id, curso_id, titulo, tipo, resumen)
-      VALUES ($1, $2, $3, 'book', $4)
+    await db.query(`
+      INSERT INTO recursos (id, curso_id, titulo, tipo, resumen, content_html)
+      VALUES ($1, $2, $3, 'book', $4, $5)
       ON CONFLICT (id) DO UPDATE SET
         curso_id = EXCLUDED.curso_id,
         titulo = EXCLUDED.titulo,
-        resumen = EXCLUDED.resumen
-    `, [String(resourceId), String(courseId), title, summary]);
+        resumen = EXCLUDED.resumen,
+        content_html = EXCLUDED.content_html
+    `, [String(resourceId), String(courseId), title, summary, htmlContent]);
 
    // Purga
    await db.query(`DELETE FROM capitulos_libros WHERE libro_id = $1`, [String(resourceId)]);
 
    // Parser aislado y limpio de side-effects web
-   const parsedData = parseBookContent(htmlContent, endpoint);
+   let parsedData = parseBookContent(htmlContent, endpoint);
 
    if (parsedData.chapters && parsedData.chapters.length > 0) {
+      console.log(`[Ingest] 🎨 Inlining SVGs for ${parsedData.chapters.length} chapters...`);
+      parsedData.chapters = await inlineSVGsInChapters(parsedData.chapters);
+
       console.log(`[Ingest] 📝 Insertando ${parsedData.chapters.length} capitulos procesados...`);
       await db.transaction(async (tx) => {
           for (const chap of parsedData.chapters) {
               // Postgres tsvector requiere texto plano idealmente, extraemos las etiquetas HTML visuales ruidosas
               const plainTextContent = chap.content.replace(/<[^>]*>?/gm, ' ').replace(/\s\s+/g, ' ');
               await tx.query(
-                  `INSERT INTO capitulos_libros (libro_id, anchor_id, titulo_capitulo, text_content) VALUES ($1, $2, $3, $4)`, 
-                  [String(resourceId), chap.id, chap.title, plainTextContent]
+                  `INSERT INTO capitulos_libros (libro_id, anchor_id, titulo_capitulo, text_content, content_html) VALUES ($1, $2, $3, $4, $5)`, 
+                  [String(resourceId), chap.id, chap.title, plainTextContent, chap.content]
               );
           }
       });

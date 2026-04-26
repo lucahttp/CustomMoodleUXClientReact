@@ -41,14 +41,56 @@ export const Logo = memo(({ onClick }) => (
   </div>
 ));
 
+import { getPgliteInstance } from "../db/pgliteSync";
+import { makeGlobalSearchQuery, makeFilteredSearchQuery } from "../db/queries";
+
 // Sidebar Component
 export const Sidebar = memo(
   ({
-    sidebarOpen,
-    setSidebarOpen,
+    isOpen: sidebarOpen,
+    setIsOpen: setSidebarOpen,
     searchTitle = "carrera",
-    resources = [],
+    courseId = null,
+    onResourceClick = () => {},
   }) => {
+    const [searchTerm, setSearchTerm] = useState("");
+    const [searchResults, setSearchResults] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
+
+    useEffect(() => {
+      const performSearch = async () => {
+        if (!searchTerm || searchTerm.length < 2) {
+          setSearchResults([]);
+          return;
+        }
+
+        setIsSearching(true);
+        try {
+          const db = await getPgliteInstance();
+          const query = courseId ? makeFilteredSearchQuery(courseId) : makeGlobalSearchQuery();
+          const res = await db.query(query, [searchTerm]);
+          setSearchResults(res.rows || []);
+        } catch (err) {
+          console.error("Sidebar Search Error:", err);
+        } finally {
+          setIsSearching(false);
+        }
+      };
+
+      const timer = setTimeout(performSearch, 300);
+      return () => clearTimeout(timer);
+    }, [searchTerm, courseId]);
+
+    const handleResultClick = (result) => {
+      onResourceClick({
+        id: result.resource_id,
+        name: result.resource_title,
+        modname: result.source_type === 'video' ? 'zoom' : 'book',
+      }, result.deep_link_ref);
+      setSidebarOpen(false);
+      setSearchTerm("");
+    };
+
     return (
       <aside
         className={`
@@ -98,6 +140,8 @@ export const Sidebar = memo(
             </div>
             <input
               type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="
                         w-full py-4 pl-12 pr-4
                         bg-[#FEFDF9] border border-transparent hover:border-stone-200 focus:border-stone-300
@@ -105,8 +149,49 @@ export const Sidebar = memo(
                         focus:outline-none focus:ring-2 focus:ring-stone-200/50
                         transition-all
                     "
-              placeholder="Buscar..."
+              placeholder={courseId ? "Buscar en este curso..." : "Buscar en todo..."}
             />
+          </div>
+
+          {/* Search Results */}
+          <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+            {isSearching && (
+              <div className="flex items-center justify-center py-8">
+                <span className="loading loading-spinner text-stone-400"></span>
+              </div>
+            )}
+
+            {!isSearching && searchTerm.length >= 2 && searchResults.length === 0 && (
+              <div className="text-center py-8 text-stone-500 text-sm">
+                No se encontraron resultados
+              </div>
+            )}
+
+            {searchResults.map((result, i) => (
+              <div
+                key={i}
+                onClick={() => handleResultClick(result)}
+                className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  {result.source_type === 'video' ? (
+                    <Headphones size={14} className="text-indigo-500" />
+                  ) : (
+                    <BookOpen size={14} className="text-emerald-500" />
+                  )}
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-stone-400">
+                    {result.source_type === 'video' ? 'Video Class' : 'Libro/Unidad'}
+                  </span>
+                </div>
+                <h4 className="text-sm font-semibold text-stone-800 mb-1 group-hover:text-indigo-600 transition-colors">
+                  {result.resource_title}
+                </h4>
+                <p 
+                  className="text-xs text-stone-500 line-clamp-2 italic"
+                  dangerouslySetInnerHTML={{ __html: result.snippet }}
+                />
+              </div>
+            ))}
           </div>
         </div>
 
@@ -169,22 +254,17 @@ export const Sidebar = memo(
 
         <div className="mt-auto">
           <h3 className="text-stone-500 text-xs font-semibold uppercase tracking-wider mb-4">
-            Ultimos recursos vistos
+            Atajos de Teclado
           </h3>
           <div className="flex flex-col gap-2">
-            {resources.map((res) => (
-              <div
-                key={res.id}
-                className="bg-[#FDFBF9] p-4 rounded-2xl flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer mb-3"
-              >
-                <div className="p-2 bg-transparent rounded-full border border-stone-300 text-stone-800">
-                  <Clock size={20} strokeWidth={2} />
-                </div>
-                <span className="text-stone-700 font-medium text-sm md:text-base">
-                  {res.title}
-                </span>
-              </div>
-            ))}
+            <div className="bg-[#FDFBF9] p-3 rounded-xl flex items-center justify-between border border-stone-200">
+               <span className="text-stone-600 text-xs font-medium">Buscar en todo</span>
+               <kbd className="px-2 py-1 bg-white border border-stone-300 rounded text-[10px] font-bold shadow-sm">⌘ K</kbd>
+            </div>
+            <div className="bg-[#FDFBF9] p-3 rounded-xl flex items-center justify-between border border-stone-200">
+               <span className="text-stone-600 text-xs font-medium">Cerrar Visor</span>
+               <kbd className="px-2 py-1 bg-white border border-stone-300 rounded text-[10px] font-bold shadow-sm">ESC</kbd>
+            </div>
           </div>
         </div>
       </aside>

@@ -21,8 +21,8 @@ export const makeGlobalSearchQuery = () => `
         --- RAMA 1: Búsqueda en Transcripciones VTT
         SELECT 
             'video' AS source_type,
-            v.id AS resource_id,
-            v.title AS resource_title,
+            r.id AS resource_id,
+            r.titulo AS resource_title,
             t.start_time::text AS deep_link_ref, -- Start time exacto en string p/ UI
             
             -- Extraemos el pedacito de texto resaltado con <mark>. 35 palabras max.
@@ -37,7 +37,7 @@ export const makeGlobalSearchQuery = () => `
             ts_rank(t.fts_vector, sq.query) AS rank
             
         FROM transcripciones_video t
-        JOIN videos v ON t.video_id = v.id
+        JOIN recursos r ON t.video_id = r.id
         CROSS JOIN search_query sq
         WHERE sq.query @@ t.fts_vector
         
@@ -46,8 +46,8 @@ export const makeGlobalSearchQuery = () => `
         --- RAMA 2: Búsqueda en Libros HTML Fragmentados
         SELECT 
             'book' AS source_type,
-            l.id AS resource_id,
-            l.title || ' - ' || c.title AS resource_title, -- Ej: Fisica II - Unidad 4
+            r.id AS resource_id,
+            r.titulo || ' - ' || c.titulo_capitulo AS resource_title, -- Ej: Fisica II - Unidad 4
             c.anchor_id AS deep_link_ref, -- Ej: "header-4"
             
             ts_headline(
@@ -60,9 +60,47 @@ export const makeGlobalSearchQuery = () => `
             ts_rank(c.fts_vector, sq.query) AS rank
             
         FROM capitulos_libros c
-        JOIN libros l ON c.libro_id = l.id
+        JOIN recursos r ON c.libro_id = r.id
         CROSS JOIN search_query sq
         WHERE sq.query @@ c.fts_vector
+    ) combinados
+    ORDER BY rank DESC
+    LIMIT 50;
+`;
+
+/**
+ * Busca filtrando por curso especifico.
+ */
+export const makeFilteredSearchQuery = (courseId) => `
+    WITH search_query AS (
+        SELECT websearch_to_tsquery('spanish', $1) AS query
+    )
+    SELECT * FROM (
+        SELECT 
+            'video' AS source_type,
+            r.id AS resource_id,
+            r.titulo AS resource_title,
+            t.start_time::text AS deep_link_ref,
+            ts_headline('spanish', t.text_content, sq.query, 'StartSel = <mark>, StopSel = </mark>, MaxWords=35, MinWords=15') AS snippet,
+            ts_rank(t.fts_vector, sq.query) AS rank
+        FROM transcripciones_video t
+        JOIN recursos r ON t.video_id = r.id
+        CROSS JOIN search_query sq
+        WHERE sq.query @@ t.fts_vector AND r.curso_id = '${courseId}'
+        
+        UNION ALL
+        
+        SELECT 
+            'book' AS source_type,
+            r.id AS resource_id,
+            r.titulo || ' - ' || c.titulo_capitulo AS resource_title,
+            c.anchor_id AS deep_link_ref,
+            ts_headline('spanish', c.text_content, sq.query, 'StartSel = <mark>, StopSel = </mark>, MaxWords=35, MinWords=15') AS snippet,
+            ts_rank(c.fts_vector, sq.query) AS rank
+        FROM capitulos_libros c
+        JOIN recursos r ON c.libro_id = r.id
+        CROSS JOIN search_query sq
+        WHERE sq.query @@ c.fts_vector AND r.curso_id = '${courseId}'
     ) combinados
     ORDER BY rank DESC
     LIMIT 50;
@@ -108,4 +146,15 @@ export async function insertVideoAndCues(pgliteDbInstance, metadata, cues) {
             `, [videoUUId, cue.start_time, cue.end_time, cue.text_content]);
         }
     });
+}
+
+/**
+ * Actualiza el HTML de un capítulo (por ejemplo, después de convertir Google Slides a SVG).
+ */
+export async function updateChapterHtml(pgliteDbInstance, libroId, anchorId, newHtml) {
+    await pgliteDbInstance.query(`
+        UPDATE capitulos_libros 
+        SET content_html = $1
+        WHERE libro_id = $2 AND anchor_id = $3
+    `, [newHtml, libroId, anchorId]);
 }

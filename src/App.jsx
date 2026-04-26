@@ -27,6 +27,7 @@ const App = () => {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [bookContent, setBookContent] = useState(null);
   const [bookAnchor, setBookAnchor] = useState(null);
+  const [selectedBookId, setSelectedBookId] = useState(null);
   const [videoResource, setVideoResource] = useState(null);
   const [uiLoading, setUiLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState(null);
@@ -48,13 +49,23 @@ const App = () => {
 
       if (isBook) {
         console.log(`[App] 📖 Loading Book: ${res.id}`);
-        const html = await fetchBookContentHTML(session.url, res.id);
+        const db = await getPgliteInstance();
+        const local = await db.query(`SELECT content_html FROM recursos WHERE id = $1`, [String(res.id)]);
         
-        console.log(`[App] 💾 Ingesting Moodle Book into PGlite FTS...`);
-        await ingestMoodleBook(res.id, res.course?.id || selectedCourse?.id || '0', session.url, res.name, html);
+        let html;
+        if (local.rows && local.rows[0]?.content_html) {
+          console.log(`[App] ⚡ Using local PGlite content for book ${res.id}`);
+          html = local.rows[0].content_html;
+        } else {
+          console.log(`[App] 🌐 Fetching book content from Moodle...`);
+          html = await fetchBookContentHTML(session.url, res.id);
+          console.log(`[App] 💾 Ingesting Moodle Book into PGlite FTS...`);
+          await ingestMoodleBook(res.id, res.course?.id || selectedCourse?.id || '0', session.url, res.name, html);
+        }
         
         setBookContent(html);
         setBookAnchor(startTime); 
+        setSelectedBookId(res.id);
         setCurrentView(VIEWS.BOOK);
       } else if (isZoom) {
         console.log(`[App] 🎥 Opening Zoom Player: ${res.id}`);
@@ -202,10 +213,52 @@ const App = () => {
     }
   }, [session, courses]);
 
-  // 4. MCP Integrations (WebMCP)
+  // 5. DB Persistence for Chapter Updates (Slides -> SVG)
+  React.useEffect(() => {
+    const handleChapterUpdate = async (e) => {
+      const { chapterId, newHtml } = e.detail;
+      if (!selectedBookId) return;
+
+      try {
+        const db = await getPgliteInstance();
+        // 1. Update the fragmented chapter for search
+        await db.query(`
+          UPDATE capitulos_libros 
+          SET content_html = $1 
+          WHERE libro_id = $2 AND anchor_id = $3
+        `, [newHtml, String(selectedBookId), chapterId]);
+
+        // 2. Update the full book HTML in 'recursos' so it persists between sessions
+        // We fetch the current full HTML, find the element, and replace it.
+        const res = await db.query(`SELECT content_html FROM recursos WHERE id = $1`, [String(selectedBookId)]);
+        if (res.rows && res.rows[0]?.content_html) {
+           const parser = new DOMParser();
+           const doc = parser.parseFromString(res.rows[0].content_html, 'text/html');
+           const target = doc.getElementById(chapterId);
+           if (target) {
+              target.innerHTML = newHtml;
+              const updatedFullHtml = doc.body.innerHTML;
+              await db.query(`UPDATE recursos SET content_html = $1 WHERE id = $2`, [updatedFullHtml, String(selectedBookId)]);
+              
+              // Update local state so UI is reactive and exports include the new SVGs
+              setBookContent(updatedFullHtml);
+              
+              console.log(`[App] ✅ Persisted SVG extraction for chapter ${chapterId} in book ${selectedBookId}`);
+           }
+        }
+      } catch (err) {
+        console.error("[App] Error persisting chapter update", err);
+      }
+    };
+
+    window.addEventListener('MOODLE_CHAPTER_UPDATED', handleChapterUpdate);
+    return () => window.removeEventListener('MOODLE_CHAPTER_UPDATED', handleChapterUpdate);
+  }, [selectedBookId]);
+
+  // 6. MCP Integrations (WebMCP)
   useWebMCP({ courses, session, handleCourseClick, handleSyncAll });
 
-  // 5. Render
+  // 7. Render
   return (
     <div className="min-h-screen bg-[#FEFDF9] text-stone-900 font-sans">
       <div className="lg:hidden p-6 flex justify-between items-center sticky top-0 bg-[#FEFDF9]/90 backdrop-blur-md z-50">
@@ -284,7 +337,8 @@ const App = () => {
         <Sidebar
           isOpen={sidebarOpen}
           setIsOpen={setSidebarOpen}
-          currentView={currentView}
+          courseId={selectedCourse?.id}
+          onResourceClick={handleResourceClick}
         />
 
         <DownloadTracker />

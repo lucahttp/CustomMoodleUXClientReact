@@ -18,6 +18,7 @@ CREATE TABLE recursos (
     moodle_url TEXT,
     rustfs_path TEXT, -- Ruta autogenerada al guardar el blob MP4 en el servidor
     status VARCHAR(50) DEFAULT 'no_descargado', -- 'no_descargado' | 'downloading' | 'pending_transcription' | 'transcribing' | 'completado'
+    content_html TEXT, -- El HTML íntegro (limpio) del recurso (libros)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -41,6 +42,7 @@ CREATE TABLE capitulos_libros (
     anchor_id TEXT,                 -- <h2 id="esto-es-el-anchor"> para deslizar la UI
     titulo_capitulo TEXT NOT NULL,  -- Título del subtítulo/capítulo
     text_content TEXT NOT NULL,     -- El cuerpo del texto para buscar dentro
+    content_html TEXT,              -- El HTML limpio del capitulo para renderizado offline
     fts_vector tsvector             -- Vector mágico
 );
 

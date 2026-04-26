@@ -1,11 +1,34 @@
 .book-reader-container {
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 0;
 }
 
 .chapter-block {
-  margin-bottom: 3rem;
+  scroll-margin-top: 100px;
+}
+
+/* Slide Styles */
+.slides-container {
+  perspective: 1000px;
+}
+
+/* Custom Scrollbar for prose */
+.prose::-webkit-scrollbar {
+  width: 6px;
+}
+
+.prose::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.prose::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+.prose::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
 }
 
 /* Responsive video container */
@@ -15,9 +38,10 @@
   padding-bottom: 56.25%; /* 16:9 aspect ratio */
   height: 0;
   overflow: hidden;
-  margin: 2rem 0;
-  background: #000;
-  border-radius: 0.5rem;
+  margin: 2.5rem 0;
+  background: #0f172a;
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
 .responsive-video-container iframe {
@@ -29,33 +53,32 @@
   border: 0;
 }
 
-/* Additional styling for book content */
-.book-reader-container img {
-  max-width: 100%;
-  height: auto;
-  display: block;
-  margin: 1.5rem auto;
-  border-radius: 0.5rem;
+/* Transitions */
+.view-transition-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.view-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 300ms ease-out;
 }
 
-.book-reader-container p {
-  margin-bottom: 1.2rem;
-  line-height: 1.7;
-}
-
-.book-reader-container ul,
-.book-reader-container ol {
-  padding-left: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.book-reader-container a {
-  color: #10b981;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.book-reader-container a:hover {
-  text-decoration: underline;
-  color: #059669;
+/* Print optimizations */
+@media print {
+  .book-reader-container {
+    max-width: 100%;
+    padding: 0;
+  }
+  .chapter-block {
+    break-after: page;
+    margin-bottom: 0;
+    padding: 2rem;
+  }
+  .slides-container {
+    display: block !important;
+  }
+  .slides-container > div {
+    break-after: page;
+  }
 }

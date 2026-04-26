@@ -44,6 +44,10 @@ export async function initPGlite() {
          console.log("[PGlite] 🔧 Base de datos limpia detectada. Inyectando Schema DDL FTS...");
          await db.exec(schemaRaw);
          console.log("[PGlite] ✅ Schema migrado estáticamente con éxito.");
+      } else {
+         // Pequeña migración on-the-fly para la columna nueva
+         await db.exec(`ALTER TABLE capitulos_libros ADD COLUMN IF NOT EXISTS content_html TEXT;`);
+         await db.exec(`ALTER TABLE recursos ADD COLUMN IF NOT EXISTS content_html TEXT;`);
       }
     } catch (e) {
        console.warn("[PGlite] ⚠️ Fallo al chequear o insertar el Schema auto-generado:", e);
