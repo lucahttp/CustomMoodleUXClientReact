@@ -19,12 +19,24 @@
 
 // This script injects a button into the page that, when clicked, will remove all existing content from the body and inject a new React component.
 
-// Intercept console.warn to silence annoying Moodle/Chromium native warnings about color inputs
-const originalConsoleWarn = console.warn;
-console.warn = function(...args) {
+// Intercept console warnings/errors to silence annoying Moodle native warnings about color inputs
+const silenceColorWarnings = (originalFn) => function(...args) {
   if (typeof args[0] === 'string' && args[0].includes('#rrggbb')) return;
-  originalConsoleWarn.apply(console, args);
+  originalFn.apply(console, args);
 };
+console.warn = silenceColorWarnings(console.warn);
+console.error = silenceColorWarnings(console.error);
+
+// Proactively fix inputs that trigger these warnings
+const fixColorInputs = () => {
+  document.querySelectorAll('input[type="color"]').forEach(input => {
+    if (!input.value || input.value === "") {
+      input.value = "#000000";
+    }
+  });
+};
+fixColorInputs();
+setInterval(fixColorInputs, 2000); // Keep fixing them if Moodle re-renders
 
 (() => {
   if (sessionStorage.getItem('mux-bypass') === 'true') {

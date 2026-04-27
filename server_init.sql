@@ -37,13 +37,62 @@ $$ LANGUAGE plpgsql;
 -- Para asegurar que este script no falle, creamos la tabla si no existe (schema simplificado para el trigger).
 CREATE TABLE IF NOT EXISTS recursos (
     id VARCHAR(255) PRIMARY KEY,
-    curso_id VARCHAR(255),
-    titulo TEXT,
-    tipo VARCHAR(50),
+    curso_id VARCHAR(255) NOT NULL,
+    titulo TEXT NOT NULL,
+    tipo VARCHAR(50) NOT NULL,
+    resumen TEXT,
+    fecha TEXT,
     moodle_url TEXT,
     rustfs_path TEXT,
-    status VARCHAR(50) DEFAULT 'no_descargado'
+    status VARCHAR(50) DEFAULT 'no_descargado',
+    content_html TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS transcripciones_video (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    video_id VARCHAR(255) NOT NULL REFERENCES recursos(id) ON DELETE CASCADE,
+    start_time VARCHAR(255) NOT NULL,
+    text_content TEXT NOT NULL,
+    fts_vector tsvector
+);
+
+CREATE TABLE IF NOT EXISTS capitulos_libros (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    libro_id VARCHAR(255) NOT NULL REFERENCES recursos(id) ON DELETE CASCADE,
+    anchor_id TEXT,
+    titulo_capitulo TEXT NOT NULL,
+    text_content TEXT NOT NULL,
+    content_html TEXT,
+    fts_vector tsvector
+);
+
+CREATE INDEX IF NOT EXISTS idx_fts_transcripciones ON transcripciones_video USING GIN (fts_vector);
+CREATE INDEX IF NOT EXISTS idx_fts_capitulos_libros ON capitulos_libros USING GIN (fts_vector);
+
+CREATE OR REPLACE FUNCTION update_fts_transcripciones() RETURNS trigger AS $$
+BEGIN
+  NEW.fts_vector := setweight(to_tsvector('spanish', coalesce(NEW.text_content, '')), 'A');
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_fts_transcripciones ON transcripciones_video;
+CREATE TRIGGER trg_fts_transcripciones BEFORE INSERT OR UPDATE ON transcripciones_video
+FOR EACH ROW EXECUTE PROCEDURE update_fts_transcripciones();
+
+CREATE OR REPLACE FUNCTION update_fts_capitulos_libros() RETURNS trigger AS $$
+BEGIN
+  NEW.fts_vector := 
+    setweight(to_tsvector('spanish', coalesce(NEW.titulo_capitulo, '')), 'A') || 
+    setweight(to_tsvector('spanish', coalesce(NEW.text_content, '')), 'B');
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_fts_capitulos ON capitulos_libros;
+CREATE TRIGGER trg_fts_capitulos BEFORE INSERT OR UPDATE ON capitulos_libros
+FOR EACH ROW EXECUTE PROCEDURE update_fts_capitulos_libros();
 
 DROP TRIGGER IF EXISTS trg_enqueue_download ON recursos;
 CREATE TRIGGER trg_enqueue_download
