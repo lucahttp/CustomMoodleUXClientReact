@@ -4,7 +4,7 @@ WORKDIR /usr/src/app
 COPY . .
 
 # Install build dependencies for Alpine (musl, openssl, pkgconfig)
-RUN apk add --no-cache musl-dev openssl-dev pkgconfig && \
+RUN apk add --no-cache musl-dev openssl-dev pkgconfig openssl-libs-static && \
     cargo build --release
 
 FROM alpine:latest

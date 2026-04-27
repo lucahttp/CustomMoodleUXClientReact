@@ -1,8 +1,11 @@
 
+# nombre del compose NextGenMoodle para que no quede con el nombre de la carpeta
+name: NextGenMoodle
 
 services:
   postgres:
     image: postgres:16-alpine
+    command: ["postgres", "-c", "wal_level=logical"]
     container_name: moodle_postgres
     environment:
       POSTGRES_USER: postgres
@@ -26,6 +29,7 @@ services:
     environment:
       DATABASE_URL: "postgresql://postgres:password@postgres:5432/moodledb"
       PG_PROXY_PASSWORD: password
+      ELECTRIC_INSECURE: true
     ports:
       - "3000:3000"
       - "5133:5133"

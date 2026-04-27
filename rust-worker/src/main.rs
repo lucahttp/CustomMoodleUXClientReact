@@ -1,4 +1,4 @@
-use pgmq::{Message, PGMQ};
+use pgmq::{Message, pg_ext::PGMQueueExt};
 use sqlx::postgres::PgPoolOptions;
 use std::env;
 use std::time::Duration;
@@ -19,10 +19,10 @@ struct TranscribeTask {
     rustfs_path: String,
 }
 
-async fn process_downloads(pgmq: &PGMQ, client: &Client, rustfs_url: &str, pool: &sqlx::PgPool) -> Result<(), anyhow::Error> {
+async fn process_downloads(pgmq: &PGMQueueExt, client: &Client, rustfs_url: &str, pool: &sqlx::PgPool) -> Result<(), anyhow::Error> {
     loop {
         // Read a message from the queue
-        let msg: Option<Message<DownloadTask>> = pgmq.read("video_downloads", Some(30))
+        let msg: Option<Message<DownloadTask>> = pgmq.read("video_downloads", 30_i32)
             .await
             .context("Failed to read from video_downloads queue")?;
 
@@ -31,7 +31,8 @@ async fn process_downloads(pgmq: &PGMQ, client: &Client, rustfs_url: &str, pool:
             println!("📥 Processing download for resource: {}", task.recurso_id);
             
             // Mark as downloading in the main DB
-            sqlx::query!("UPDATE recursos SET status = 'downloading' WHERE id = $1", task.recurso_id)
+            sqlx::query("UPDATE recursos SET status = 'downloading' WHERE id = $1")
+                .bind(&task.recurso_id)
                 .execute(pool)
                 .await?;
 
@@ -40,10 +41,11 @@ async fn process_downloads(pgmq: &PGMQ, client: &Client, rustfs_url: &str, pool:
                     println!("✅ Download successful: {}", path);
                     
                     // Update DB
-                    sqlx::query!(
-                        "UPDATE recursos SET status = 'pending_transcription', rustfs_path = $1 WHERE id = $2", 
-                        path, task.recurso_id
-                    ).execute(pool).await?;
+                    sqlx::query("UPDATE recursos SET status = 'pending_transcription', rustfs_path = $1 WHERE id = $2")
+                        .bind(&path)
+                        .bind(&task.recurso_id)
+                        .execute(pool)
+                        .await?;
 
                     // Enqueue transcription task
                     let transcribe_task = TranscribeTask {
@@ -58,7 +60,8 @@ async fn process_downloads(pgmq: &PGMQ, client: &Client, rustfs_url: &str, pool:
                 Err(e) => {
                     eprintln!("❌ Error downloading {}: {}", task.recurso_id, e);
                     // Revert status so it can be retried or handled
-                    sqlx::query!("UPDATE recursos SET status = 'error_download' WHERE id = $1", task.recurso_id)
+                    sqlx::query("UPDATE recursos SET status = 'error_download' WHERE id = $1")
+                        .bind(&task.recurso_id)
                         .execute(pool)
                         .await?;
                     
@@ -91,9 +94,9 @@ async fn download_to_rustfs(client: &Client, url: &str, id: &str, rustfs_url: &s
     Ok(format!("/data/{}", filename))
 }
 
-async fn process_transcriptions(pgmq: &PGMQ, pool: &sqlx::PgPool) -> Result<(), anyhow::Error> {
+async fn process_transcriptions(pgmq: &PGMQueueExt, pool: &sqlx::PgPool) -> Result<(), anyhow::Error> {
     loop {
-        let msg: Option<Message<TranscribeTask>> = pgmq.read("video_transcriptions", Some(300)) // Longer visibility for transcription
+        let msg: Option<Message<TranscribeTask>> = pgmq.read("video_transcriptions", 300_i32) // Longer visibility for transcription
             .await
             .context("Failed to read from video_transcriptions queue")?;
 
@@ -101,7 +104,8 @@ async fn process_transcriptions(pgmq: &PGMQ, pool: &sqlx::PgPool) -> Result<(), 
             let task = &m.message;
             println!("🎙️ Transcribing resource: {}", task.recurso_id);
             
-            sqlx::query!("UPDATE recursos SET status = 'transcribing' WHERE id = $1", task.recurso_id)
+            sqlx::query("UPDATE recursos SET status = 'transcribing' WHERE id = $1")
+                .bind(&task.recurso_id)
                 .execute(pool)
                 .await?;
 
@@ -112,12 +116,15 @@ async fn process_transcriptions(pgmq: &PGMQ, pool: &sqlx::PgPool) -> Result<(), 
             sleep(Duration::from_secs(10)).await;
 
             // Insert placeholder transcription
-            sqlx::query!(
-                "INSERT INTO transcripciones_video (video_id, start_time, text_content) VALUES ($1, $2, $3)",
-                task.recurso_id, "00:00:00.000", "Transcripción automática procesada por Rust Worker."
-            ).execute(pool).await?;
+            sqlx::query("INSERT INTO transcripciones_video (video_id, start_time, text_content) VALUES ($1, $2, $3)")
+                .bind(&task.recurso_id)
+                .bind("00:00:00.000")
+                .bind("Transcripción automática procesada por Rust Worker.")
+                .execute(pool)
+                .await?;
 
-            sqlx::query!("UPDATE recursos SET status = 'completado' WHERE id = $1", task.recurso_id)
+            sqlx::query("UPDATE recursos SET status = 'completado' WHERE id = $1")
+                .bind(&task.recurso_id)
                 .execute(pool)
                 .await?;
 
@@ -155,7 +162,7 @@ async fn main() -> Result<(), anyhow::Error> {
     println!("✅ Connected to PostgreSQL!");
 
     // Initialize PGMQ
-    let pgmq = PGMQ::new(&database_url).await?;
+    let pgmq = PGMQueueExt::new(database_url, 5).await?;
     
     // Create queues if they don't exist
     let _ = pgmq.create("video_downloads").await;
