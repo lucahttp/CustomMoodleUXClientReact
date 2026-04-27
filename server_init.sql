@@ -1,8 +1,8 @@
 -- server_init.sql
 -- Este script inicializa PGMQ y los triggers en el servidor para el worker de Rust.
 
--- 1. Habilitar extensiones necesarias
-CREATE EXTENSION IF NOT EXISTS pgmq CASCADE;
+-- 1. Habilitar extensiones necesarias (PGMQ se instala vía 01-pgmq.sql)
+-- CREATE EXTENSION IF NOT EXISTS pgmq CASCADE;
 
 -- 2. Crear colas de PGMQ
 SELECT pgmq.create('video_downloads');

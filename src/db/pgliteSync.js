@@ -60,16 +60,20 @@ export async function initPGlite() {
       
       // Sincronizar recursos (incluye metadata, status y url de descarga)
       await db.electric.syncShapeToTable({
-        url: syncUrl,
-        shape: { table: 'recursos' },
+        shape: { 
+          url: syncUrl,
+          params: { table: 'recursos' }
+        },
         table: 'recursos',
         primaryKey: ['id']
       });
 
       // Sincronizar resultados
       await db.electric.syncShapeToTable({
-        url: syncUrl,
-        shape: { table: 'transcripciones_video' },
+        shape: { 
+          url: syncUrl,
+          params: { table: 'transcripciones_video' }
+        },
         table: 'transcripciones_video',
         primaryKey: ['id']
       });

@@ -18,6 +18,14 @@
 */
 
 // This script injects a button into the page that, when clicked, will remove all existing content from the body and inject a new React component.
+
+// Intercept console.warn to silence annoying Moodle/Chromium native warnings about color inputs
+const originalConsoleWarn = console.warn;
+console.warn = function(...args) {
+  if (typeof args[0] === 'string' && args[0].includes('#rrggbb')) return;
+  originalConsoleWarn.apply(console, args);
+};
+
 (() => {
   if (sessionStorage.getItem('mux-bypass') === 'true') {
     // Provide a way to turn it back on from the classic UI

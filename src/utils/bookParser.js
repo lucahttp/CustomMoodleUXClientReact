@@ -141,8 +141,13 @@ export const parseBookContent = (htmlString, endpoint) => {
 
         // **D. Enhanced Google Slides Embeds via GooGleSlidesToPDF:** Use external API parser when requested
         chapterEl.querySelectorAll("iframe").forEach((iframe) => {
-             const src = iframe.getAttribute("src") || "";
+             let src = iframe.getAttribute("src") || "";
              if (src.includes("docs.google.com/presentation/d/")) {
+                 // Force https:// to avoid protocol-relative or extension-relative issues
+                 if (src.startsWith("//")) src = "https:" + src;
+                 else if (!src.startsWith("http")) src = "https://" + src;
+                 iframe.setAttribute("src", src);
+                 
                  const presentationIdMatch = src.match(/\/d\/([a-zA-Z0-9-_]+)/);
                  if (presentationIdMatch && presentationIdMatch[1]) {
                      const presentationId = presentationIdMatch[1];
