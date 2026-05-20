@@ -26,20 +26,26 @@ export const useWebMCP = ({ courses, session, handleCourseClick, handleSyncAll }
         window.dispatchEvent(new CustomEvent("getSessionObject", { detail: null }));
     };
 
+    const controller = new AbortController();
+
     tools.forEach(tool => {
-      mc.registerTool({
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema,
-        execute: async (args) => {
-          return executeTool(tool.name, args, { courses, session, handleCourseClick, handleSyncAll, activateExtension });
-        }
-      });
+      try {
+        mc.registerTool({
+          name: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema,
+          execute: async (args) => {
+            return executeTool(tool.name, args, { courses, session, handleCourseClick, handleSyncAll, activateExtension });
+          }
+        }, { signal: controller.signal });
+      } catch (e) {
+        console.error(`[WebMCP] Failed to register tool ${tool.name}:`, e);
+      }
     });
 
     // Cleanup
     return () => {
-      tools.forEach(tool => mc.unregisterTool(tool.name));
+      controller.abort();
     };
   }, [courses, session, handleCourseClick, handleSyncAll]);
 };
