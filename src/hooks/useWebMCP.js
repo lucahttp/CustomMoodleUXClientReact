@@ -26,6 +26,10 @@ export const useWebMCP = ({ courses, session, handleCourseClick, handleSyncAll }
         window.dispatchEvent(new CustomEvent("getSessionObject", { detail: null }));
     };
 
+    // Guard: prevent duplicate registration (React StrictMode runs effects twice)
+    if (mc._toolsRegistered) return;
+    mc._toolsRegistered = true;
+
     const controller = new AbortController();
 
     tools.forEach(tool => {
